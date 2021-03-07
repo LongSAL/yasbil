@@ -8,17 +8,17 @@
  * registers the activation and deactivation functions, and defines a function
  * that starts the plugin.
  *
- * @link              http://example.com
+ * @link              https://github.com/nilavra/yasbil
  * @since             1.0.0
  * @package           YASBIL_WP
  *
  * @wordpress-plugin
  * Plugin Name:       YABIL WP
- * Plugin URI:        http://example.com/yasbil-wp-uri/
+ * Plugin URI:        https://github.com/nilavra/yasbil
  * Description:       YASBIL: Yet Another Search Behaviour (and) Interaction Logger
  * Version:           1.0.0
  * Author:            Nilavra Bhattacharya
- * Author URI:        https://nilavra.in/
+ * Author URI:        https://nilavra.in
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       yasbil-wp

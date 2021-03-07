@@ -91,7 +91,7 @@ function get_search_engine_info(p_url_obj)
     if(!res.search_engine)
     {
         let arr_common_search_url_params = [
-            'q', 'query', 'k', 'search',
+            'q', 'query', 'k', 'search', 'search_query'
         ];
 
         for(let param_name of arr_common_search_url_params)

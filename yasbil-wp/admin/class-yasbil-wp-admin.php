@@ -545,7 +545,8 @@ class YASBIL_WP_Admin {
         $sql_select_sessions = "
             SELECT *
             FROM $tbl_sessions s
-            WHERE s.wp_userid = %s
+            WHERE 1=1
+            and s.wp_userid = %s
             ORDER BY s.session_start_ts desc
         ";
 
@@ -590,7 +591,9 @@ class YASBIL_WP_Admin {
             $sql_select_pv = "
                     SELECT *
                     FROM $tbl_pagevisits pv
-                    WHERE pv.session_guid = %s
+                    WHERE 1=1
+                    and pv.session_guid = %s
+                    and TRIM(pv.pv_url) LIKE '%://%'
                     ORDER BY pv.pv_ts asc
                 ";
 
