@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "YASBIL",
+  "description": "YASBIL: Yet Another Search Behaviour (and) Interaction Logger",
+  "homepage_url": "http://example.com/plugin-name-uri/",
+  "version": "0.1",
+
+  "background": {
+    "scripts": ["dexie-3.0.3.js", "yasbil-utility.js", "yasbil-background-script.js"]
+  },
+
+  "browser_action": {
+   "default_popup": "yasbil-browser-action-popup.html",
+   "default_title": "YASBIL is off"
+  },
+
+  "options_ui": {
+    "page": "yasbil-options.html",
+    "browser_style": true,
+    "open_in_tab": true
+  },
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "yasbil@utexas.edu"
+    }
+  },
+
+  "icons": {
+    "48": "icon/yasbil-icon-normal.png",
+    "96": "icon/yasbil-icon-normal.png"
+  },
+
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "webNavigation",
+    "tabs",
+    "storage",
+    "unlimitedStorage",
+    "history",
+    "notifications"
+  ]
+}
