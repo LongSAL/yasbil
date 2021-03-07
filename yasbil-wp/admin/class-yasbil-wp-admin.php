@@ -167,8 +167,8 @@ class YASBIL_WP_Admin {
             'read', //Capability: all reg users
             'yasbil_wp', //Page slug
             array($this, 'yasbil_html_per_user_data'), //Callback to print html
-            'dashicons-palmtree' //icon url
-            //plugins_url( 'myplugin/images/icon.png' ),
+            //'dashicons-palmtree' //icon url
+            plugins_url( 'yasbil-wp/icon/yasbil-icon-20.png' )
             // 6, // https://developer.wordpress.org/reference/functions/add_menu_page/#menu-structure
         );
 
