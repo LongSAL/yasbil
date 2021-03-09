@@ -814,11 +814,13 @@ class YASBIL_WP_Admin {
 
                         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
                         $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+                        
+                        //fix: added IF() for when session_end_ts = 0 (not recorded)
 
                         $sql_select_summary_stats = "
                             SELECT COUNT(DISTINCT s.session_guid) session_ct
                                 , COUNT(DISTINCT pv.pv_guid) pv_ct
-                                , AVG(distinct(s.session_end_ts - s.session_start_ts)) avg_session_dur_ms
+                                , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
                                 , (COUNT(DISTINCT pv.pv_guid) / COUNT(DISTINCT s.session_guid) ) pv_per_session
                                 , MAX(pv.pv_ts) last_activity
                             FROM $tbl_sessions s,
