@@ -11,4 +11,4 @@
 Screen recording of a typical research participant’s search session and
 interaction with YASBIL (both browser extension and WordPress plugin).
 
-[![IMAGE ALT TEXT](./resources/yasbil-youtube-thumbnail.png)](http://www.youtube.com/watch?v=-sxQ2Xh_EPo "Video Title")
+[![YouTube Video: YASBIL Demo Screen Recording](./resources/yasbil-youtube-thumbnail.png)](http://www.youtube.com/watch?v=-sxQ2Xh_EPo "YASBIL Demo Screen Recording")
