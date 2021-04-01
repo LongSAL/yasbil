@@ -708,7 +708,7 @@ function connected(p)
         else if(yasbil_msg === "__RESET_SYNC_TS")
         {
             // call from front-end by:
-            // portToBG.postMessage({yasbil_msg: "DO_SYNC"});
+            // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
             __reset_sync_ts();
         }
     });
