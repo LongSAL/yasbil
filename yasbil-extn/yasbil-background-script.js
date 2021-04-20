@@ -225,9 +225,19 @@ async function db_log_pagevisit(details)
 
     // if frame_id > 0 --> iframe.
 
+    // content script execution; returns array of objects
+    // The array's values represent the result of the script
+    // in every injected frame.
+    const cs_info_all = await browser.tabs.executeScript(
+        details.tabId,
+        {file: "yasbil-content-script.js"}
+    );
+
+    const cs_info = cs_info_all[0];
+
     if(details.frameId === 0 && details.parentFrameId ===-1)
     {
-        let data_row = {
+        const data_row = {
             pv_guid: uuidv4(),
             session_guid: get_session_id(),
             win_id: tabInfo.windowId,
@@ -237,6 +247,16 @@ async function db_log_pagevisit(details)
             // process_id: details.processId,
             // frame_id: details.frameId,
             // parent_frame_id: details.parentFrameId, always -1
+
+            zoom_level: cs_info.zoom_level,
+            browser_width: cs_info.browser_width,
+            browser_height: cs_info.browser_height,
+            viewport_width: cs_info.viewport_width,
+            viewport_height: cs_info.viewport_height,
+            page_width: cs_info.page_width,
+            page_height: cs_info.page_height,
+
+
             pv_ts: details.timeStamp,
             pv_url: details.url,
             pv_title: tabInfo.title, // not fully available; needs update

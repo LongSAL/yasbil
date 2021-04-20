@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "YASBIL",
   "description": "YASBIL: Yet Another Search Behaviour (and) Interaction Logger",
-  "homepage_url": "https://github.com/nilavra/yasbil",
+  "homepage_url": "https://github.com/yasbil/yasbil",
   "version": "1.0.0",
 
   "background": {

@@ -61,6 +61,7 @@ function get_search_engine_info(p_url_obj)
 
     // name of search engine; hostname pattern; search query param name
     let arr_se_items = [
+        { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q' },
         { se_name: 'GOOGLE', host: 'google.', url_param: 'q' },
         { se_name: 'YOUTUBE', host: 'youtube.', url_param: 'search_query' },
         { se_name: 'BING', host: 'bing.', url_param: 'q' },
