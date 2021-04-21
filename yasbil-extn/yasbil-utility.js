@@ -60,7 +60,7 @@ function get_search_engine_info(p_url_obj)
     const a = p_url_obj;
 
     // name of search engine; hostname pattern; search query param name
-    let arr_se_items = [
+    const arr_se_items = [
         { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q' },
         { se_name: 'GOOGLE', host: 'google.', url_param: 'q' },
         { se_name: 'YOUTUBE', host: 'youtube.', url_param: 'search_query' },
@@ -75,7 +75,7 @@ function get_search_engine_info(p_url_obj)
         { se_name: 'FLIPKART', host: 'flipkart.', url_param: 'q' },
         { se_name: 'NAVER', host: 'naver.', url_param: 'query' }, //south korea
         { se_name: 'SEZNAM', host: 'seznam.', url_param: 'q' }, //Czech Republic
-        // otheres? WebMD etc.?
+        // TODO: others? WebMD etc.?
     ];
 
     for(let se_item of arr_se_items)
@@ -106,12 +106,51 @@ function get_search_engine_info(p_url_obj)
         }
     }
 
-
     return res;
 }
 
 
+//-------------------- is_tracking_allowed -----------------
+// returns if tracking is allowed, checks agains a "deny"list
+function is_tracking_allowed(p_url_obj)
+{
+    let res = true;
+    const a = p_url_obj;
 
+    if(a.hostname.length < 1)
+    {
+        res = false;
+    }
+    else
+    {
+        // list of hostname patterns to not track
+        const arr_deny_list = [
+            'about:',
+            'chrome:',
+            'mail.', //hopefully captures all email websites?
+            'outlook.', //outlook Mail
+
+            // 'docs.google.', //G-suite documents
+            // 'drive.google.', //google
+            // 'office.com', //Office365
+            //TODO: others
+        ];
+
+        for(let deny_domain of arr_deny_list)
+        {
+            if(a.hostname.startsWith(deny_domain))
+            {
+                res = false;
+                break;
+            }
+        }
+    }
+
+
+
+
+    return res;
+}
 
 
 

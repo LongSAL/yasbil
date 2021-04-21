@@ -12,7 +12,9 @@
  *
  */
 
-let result =
+//const tab_info = await browser.tabs.getCurrent() //doesn work
+
+const result =
 {
     zoom_level: window.devicePixelRatio,
     browser_width: window.outerWidth,

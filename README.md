@@ -48,37 +48,39 @@ interaction with YASBIL (both browser extension and WordPress plugin).
  ----------------
  
 ### `yasbil_session_pagevisits`
- 
-- from [webNavigation](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events; Page Visits in a Session, similar to `moz_places`
- 
+
+- Page Visits in a Session, similar to `moz_places`
+- captured from three events:
+    - [webNavigation.onCompleted](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onCompleted)
+        - captures main page visit events, only AFTER the page has completely loaded
+    - [tabs.onActivated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated)
+        - captures tab switches: user switches back to a webpage-tab previously opened
+    - [webNavigation.onHistoryStateUpdated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated)
+        - to capture webpages like YouTube which do not fire `webNavigation.onCompleted events`
+        - Note: this event is fired (i) often twice by Google SERPs, (ii) once by YouTube, (iii) never by many webpages 
+
  
 | **Column** | **Description** |
 | ----------- | ----------- |
 |`pv_id`|server only; PK in server|
+|`pv_event`| event that fired the pagevisit |
 |`pv_guid`| PK in client|
 |`session_guid`||
 |`win_id`||
 |`win_guid`||
 |`tab_id`||
 |`tab_guid`|unique ID for the browser tab in which pagevisit occurs|
-|--------------|--------------|
-|`zoom_level`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
-|`browser_width`| `window.outerWidth` width of entire browser window; changes with zoom level|
-|`browser_height`| `window.outerHeight` height of entire browser window;  changes with zoom level|
-|`viewport_width`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
-|`viewport_height`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
-|`page_width`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
-|`page_height`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|`tab_width`||
+|`tab_height`||
 |--------------|--------------|
 |`pv_ts`|timestamp of webpage visit|
 |`pv_url`||
 |`pv_title`||
-|`title_upd`|whether page title has been updated (`webnavigation.oncommitted` event does not have the final webpage title)|
 |`pv_hostname`||
 |`pv_rev_hostname`| for easy lookup of TLD types visited|
-|`pv_hidden`||
-|`pv_transition_type`| [Transition type](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType); use history API for better compatibility|
-|`pv_transition_qualifier`| [Transition Qualifier](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier)|
+|`pv_transition_type`| [Transition type](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType)|
+|`hist_ts`||
+|`hist_visit_ct`||
 |`pv_srch_engine`||
 |`pv_srch_qry`||
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|
@@ -125,5 +127,14 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`m_act_typ`|activity type: `HOVER`, `CLICK`, `SCROLL` (others?)|
 |`loc_x`||
 |`loc_y`||
+|--------------|--------------|
+|`zoom_level`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
+|`browser_width`| `window.outerWidth` width of entire browser window; changes with zoom level|
+|`browser_height`| `window.outerHeight` height of entire browser window;  changes with zoom level|
+|`viewport_width`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
+|`viewport_height`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
+|`page_width`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
+|`page_height`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|--------------|--------------|
 |.|capture text / context around click / hover etc|
 | `sync_ts`| only in client; 0 = not synced|

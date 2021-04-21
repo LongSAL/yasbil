@@ -43,7 +43,7 @@ const TABLES_TO_SYNC = [{
 
 
 //-------------------- Establish Connection with Database -----------------
-var db = new Dexie("yasbil_db");
+let db = new Dexie("yasbil_db");
 
 db.version(1).stores({
     yasbil_sessions: 'session_guid,sync_ts',
@@ -107,11 +107,14 @@ async function db_log_start()
 
         await update_sync_data_msg();
 
-        //add listeneres --> start logging
-        // browser.webNavigation.onCompleted.addListener(db_log_pagevisit);
-        browser.webNavigation.onCommitted.addListener(db_log_pagevisit);
-        browser.webNavigation.onCompleted.addListener(db_upd_pagevisit);
-        browser.tabs.onActivated.addListener(db_log_tabswitch);
+        //***** add listeneres --> start logging ********
+        // 1. log "normal" page visits
+        browser.webNavigation.onCompleted.addListener(listener_webNav_onCompleted);
+        // 2. log tab switches
+        browser.tabs.onActivated.addListener(listener_tabs_onActivated);
+
+        //3. TODO: log YouTube like page visitss
+        browser.webNavigation.onHistoryStateUpdated.addListener(listener_webNav_onHistUpd);
 
         // change icon to logging-on icon
         browser.browserAction.setIcon({
@@ -128,7 +131,6 @@ async function db_log_start()
     {
         console.log("Session Start Insert Error: " + error);
     });
-
 }
 
 
@@ -139,10 +141,9 @@ async function db_log_start()
 async function db_log_end()
 {
     //first: remove listeners --> stop logging
-    // browser.webNavigation.onCompleted.removeListener(db_log_pagevisit);
-    browser.webNavigation.onCommitted.removeListener(db_log_pagevisit);
-    browser.webNavigation.onCompleted.removeListener(db_upd_pagevisit);
-    browser.tabs.onActivated.removeListener(db_log_tabswitch);
+    browser.webNavigation.onCompleted.removeListener(listener_webNav_onCompleted);
+    browser.tabs.onActivated.removeListener(listener_tabs_onActivated);
+    browser.webNavigation.onHistoryStateUpdated.removeListener(listener_webNav_onHistUpd);
 
     // start the database update
     let session_guid = get_session_id();
@@ -154,7 +155,7 @@ async function db_log_end()
             session_guid, {session_end_ts: new Date().getTime()}
         ).catch(function(error)
         {
-            console.log("Session End Error: " + error);
+            console.log("Session End DB Error: " + error);
         });
 
         // todo: do housekeeping
@@ -188,99 +189,24 @@ async function db_log_end()
 
 
 
-//-------------------- log pagevisits (aka webNavigation) -----------------
-// Fired when a navigation is committed. At least part of the new document
-// has been received from the server and the browser has decided to switch to the new document.
-// title is not fuilly available; need to update title later on
-async function db_log_pagevisit(details)
+
+//-------------------- log pagevisits method #1 -----------------
+// Fired when a document, including the resources it refers to, is completely loaded
+// and initialized. This is equivalent to the DOM 'load' event.
+// event details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onCompleted
+// tab details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/Tab
+// history visittem: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/VisitItem
+async function listener_webNav_onCompleted(details)
 {
-    /**
-     available properties from details
-     - tabId:
-            integer. The ID of the tab in which the navigation has occurred.
-     - url:
-            string. The URL to which the given frame has navigated.
-     - processId:
-            integer. The ID of the process in which this tab is being rendered.
-     - frameId:
-             integer. Frame in which the navigation has occurred. 0 indicates that navigation happened
-             in the tab's top-level browsing context, not in a nested <iframe>. A positive value indicates
-             that navigation happened in a nested iframe. Frame IDs are unique for a given tab and process.
-     - parentFrameId
-            integer. ID of this frame's parent. Set to -1 if this is a top-level frame.
-     - timeStamp:
-            number. The time at which the page finished loading, in milliseconds since the epoch.
-     - transitionType
-            transitionType. The reason for the navigation. (For example, "link" if the user clicked
-            a link, or "reload" if the user reloaded the page.)
-     - transitionQualifiers
-             Array of transitionQualifier. Extra information about the navigation: for example, whether
-             there was a server or client redirect.
-     */
+    // console.log('webNavigation.onCompleted');
 
-    let tabInfo = await browser.tabs.get(details.tabId);
-    const url = new URL(details.url);
-    //identify popular search engines and get search query from URL
-    const se_info = get_search_engine_info(url);
-
-    // if frame_id > 0 --> iframe.
-
-    // content script execution; returns array of objects
-    // The array's values represent the result of the script
-    // in every injected frame.
-    const cs_info_all = await browser.tabs.executeScript(
-        details.tabId,
-        {file: "yasbil-content-script.js"}
-    );
-
-    const cs_info = cs_info_all[0];
-
-    if(details.frameId === 0 && details.parentFrameId ===-1)
+    if(details.frameId === 0)
     {
-        const data_row = {
-            pv_guid: uuidv4(),
-            session_guid: get_session_id(),
-            win_id: tabInfo.windowId,
-            win_guid: get_win_guid(tabInfo.windowId),
-            tab_id: details.tabId,
-            tab_guid: get_tab_guid(details.tabId),
-            // process_id: details.processId,
-            // frame_id: details.frameId,
-            // parent_frame_id: details.parentFrameId, always -1
-
-            zoom_level: cs_info.zoom_level,
-            browser_width: cs_info.browser_width,
-            browser_height: cs_info.browser_height,
-            viewport_width: cs_info.viewport_width,
-            viewport_height: cs_info.viewport_height,
-            page_width: cs_info.page_width,
-            page_height: cs_info.page_height,
-
-
-            pv_ts: details.timeStamp,
-            pv_url: details.url,
-            pv_title: tabInfo.title, // not fully available; needs update
-            title_upd: 0, // set 1 after update
-            pv_hostname: url.hostname,
-            pv_rev_hostname: url.hostname.split('').reverse().join(''),
-            // pv_hidden: 0,
-            pv_transition_type: details.transitionType.toUpperCase(),
-            pv_transition_qualifier: details.transitionQualifiers.join('|').toUpperCase(),
-            pv_srch_engine: se_info.search_engine,
-            pv_srch_qry: se_info.search_query,
-            sync_ts: 0,
-        };
-
-        // console.log(">>> ",
-        //     'win_id = ' + data_row.win_id + ' | tab_id = ' + data_row.tab_id + '\n',
-        //     data_row.pv_transition_type + ' | ' + data_row.pv_hostname + ' | title = ' + data_row.pv_title + '\n',
-        //     'search engine = ' + data_row.pv_srch_engine + ' | ' + 'search query = ' + data_row.pv_srch_qry + '\n',
-        // );
-
-        await db.yasbil_session_pagevisits.add(data_row)
-        .catch(function(error) {
-            console.log("PageVisit Insert Error: " + error);
-        });
+        await db_log_pagevisits(
+            details.tabId,
+            details.timeStamp,
+            'webNavigation.onCompleted'
+        );
     }
     else
     {
@@ -288,96 +214,6 @@ async function db_log_pagevisit(details)
         //  - should we log iframes?
         //  - if yes, how many much / other criteria? w3schools loads 50+ subframes
         //  - check url for about:blank?
-
-        /************************************
-        console.log('-------- IFRAME -------', details.frameId);
-
-        table_name = "yasbil_session_framevisits";
-
-        data_row = {
-            fv_guid: uuidv4(),
-            session_guid: get_session_id(),
-            win_id: tabInfo.windowId,
-            win_guid: get_win_guid(tabInfo.windowId),
-            tab_id: details.tabId,
-            tab_guid: get_tab_guid(details.tabId),
-            // process_id: details.processId,
-            frame_id: details.frameId,
-            parent_frame_id: details.parentFrameId,
-            fv_ts: details.timeStamp,
-            fv_url: details.url,
-            fv_title: tabInfo.title, // not fully available; needs update
-            title_upd: 0, // set 1 after update
-            fv_hostname: url.hostname,
-            fv_rev_hostname: url.hostname.split('').reverse().join(''),
-            // pv_hidden: 0,
-            fv_transition_type: details.transitionType.toUpperCase(),
-            fv_transition_qualifier: details.transitionQualifiers,
-            fv_srch_engine: se_info.search_engine,
-            fv_srch_qry: se_info.search_query,
-            sync_ts: 0,
-        }
-
-         await db.yasbil_session_framevisits.add(data_row);
-
-        ******************************************/
-    }
-
-    // update message
-    await update_sync_data_msg();
-}
-
-
-
-//-------------------- update pagevisits (aka webNavigation) -----------------
-// Fired when a document, including the resources it refers to, is completely loaded
-// and initialized. This is equivalent to the DOM 'load' event.
-// updates title of pagevisits (and framevisits?)
-async function db_upd_pagevisit(details)
-{
-    /**
-     available properties from details
-     - tabId:
-        integer. The ID of the tab in which the navigation has occurred.
-     - url:
-        string. The URL to which the given frame has navigated.
-     - processId:
-        integer. The ID of the process in which this tab is being rendered.
-     - frameId:
-         integer. Frame in which the navigation has occurred. 0 indicates that navigation happened
-         in the tab's top-level browsing context, not in a nested <iframe>. A positive value indicates
-         that navigation happened in a nested iframe. Frame IDs are unique for a given tab and process.
-     - timeStamp:
-        number. The time at which the page finished loading, in milliseconds since the epoch.
-     */
-
-    if(details.frameId === 0)
-    {
-        let tabInfo = await browser.tabs.get(details.tabId);
-
-        let where_clause = {
-            session_guid: get_session_id(),
-            title_upd: 0,
-            pv_url: details.url,
-            tab_guid: get_tab_guid(details.tabId)
-        }
-
-        let upd_data = {pv_title: tabInfo.title, title_upd: 1};
-
-        // console.log('title UPD: where = ', where_clause, ' | upd = ', upd_data);
-
-        // find records where title isnt updated and
-        // update the page title
-        await db.yasbil_session_pagevisits
-            .where(where_clause)
-            .modify(upd_data)
-            // .first(row => {
-            //     db.yasbil_session_pagevisits.update(row.pv_guid, upd_data)
-            //     console.log("Found David, 43: " + JSON.stringify(row));
-            // })
-            .catch(error => {
-                console.error(error.stack || error);
-            });
     }
 }
 
@@ -387,54 +223,119 @@ async function db_upd_pagevisit(details)
 // Fires when the active tab in a window changes. Note that the tab's
 // URL may not be set at the time this event fired, but you can listen
 // to tabs.onUpdated events to be notified when a URL is set.
-async function db_log_tabswitch(activeInfo)
+// event details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated
+async function listener_tabs_onActivated(details)
+{
+    // console.log('tabs.onActivated');
+
+    await db_log_pagevisits(
+        details.tabId,
+        new Date().getTime(), //current timestamp
+        'tabs.onActivated',
+        true
+    );
+}
+
+
+
+
+//-------------------- log YouTube like webpage visits? -----------------
+// event docs: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated
+async function listener_webNav_onHistUpd(details)
+{
+    // console.log('webNavigation.onHistoryStateUpdated');
+
+    // note:
+    // onHistoryStateUpdated is often fired twice by Google SERPs
+    // it is fired once by YouTube
+    // it is not fired by many webpages
+
+    await db_log_pagevisits(
+        details.tabId,
+        details.timeStamp,
+        'webNavigation.onHistoryStateUpdated',
+    );
+}
+
+
+
+
+
+
+// --- single helper function to log pagevisits --------
+// takes tabId, timestamp of visit, event-name that triggered this,
+// and optionally, if tab-switch
+async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 {
     // TODO: get CURRENT tab info from where extension is switched on
 
-    let tabInfo = await browser.tabs.get(activeInfo.tabId);
+    const tabInfo = await browser.tabs.get(tabId);
+
     const url = new URL(tabInfo.url);
+
+    // do no track certain blocked domains (e.g. gmail, about:, etc)
+    if(!is_tracking_allowed(url))
+        return;
+
+    //identify popular search engines and get search query from URL
     const se_info = get_search_engine_info(url);
 
-    let data_row = {
+    //get transition-type and visit time from history
+    let transition_typ = '';
+    let hist_visit_time = -1;
+    let hist_visit_count = -1;
+    const arr_hist = await browser.history.getVisits({url: tabInfo.url});
+
+    if(arr_hist.length > 0)
+    {
+        const last_visit = arr_hist[0]; //array is sorted in rev chronological order
+        transition_typ = last_visit.transition;
+        hist_visit_time = last_visit.visitTime;
+        hist_visit_count = arr_hist.length;
+    }
+
+    if(is_tab_switch)
+        transition_typ = "YASBIL_TAB_SWITCH";
+
+    const data_row = {
+        pv_event: e_name,
         pv_guid: uuidv4(),
         session_guid: get_session_id(),
-        win_id: activeInfo.windowId,
-        win_guid: get_win_guid(activeInfo.windowId),
-        tab_id: activeInfo.tabId,
-        tab_guid: get_tab_guid(activeInfo.tabId),
-        // process_id: details.processId,
-        // frame_id: 0, //details.frameId,
-        // parent_frame_id: details.parentFrameId,
-        pv_ts: new Date().getTime(),
+        win_id: tabInfo.windowId,
+        win_guid: get_win_guid(tabInfo.windowId),
+        tab_id: tabId,
+        tab_guid: get_tab_guid(tabId),
+        tab_width: tabInfo.width,
+        tab_height: tabInfo.height ,
+
+        pv_ts: ts,
         pv_url: tabInfo.url,
-        pv_title: tabInfo.title, // fully available since pre opened (TODO: check)
-        title_upd: 0, // set 1 after update
+        pv_title: tabInfo.title, // should be fully available
         pv_hostname: url.hostname,
         pv_rev_hostname: url.hostname.split('').reverse().join(''),
-        // pv_hidden: 0,
-        pv_transition_type: "YASBIL_TAB_SWITCH",
-        pv_transition_qualifier: "",
-        //TODO: deal with these differently - not new queries
+        pv_transition_type: transition_typ.toUpperCase(),
+        hist_ts: hist_visit_time,
+        hist_visit_ct: hist_visit_count,
         pv_srch_engine: se_info.search_engine,
         pv_srch_qry: se_info.search_query,
         sync_ts: 0,
     };
 
-    // console.log(">>> ",
-    //     'win_id = ' + data_row.win_id + ' | tab_id = ' + data_row.tab_id + '\n',
-    //     data_row.pv_transition_type + ' | ' + data_row.pv_hostname + ' | title = ' + data_row.pv_title + '\n',
-    //     'search engine = ' + data_row.pv_srch_engine + ' | ' + 'search query = ' + data_row.pv_srch_qry + '\n',
-    //
-    // );
+    console.log(data_row);
 
     await db.yasbil_session_pagevisits.add(data_row)
-    .catch(function(error) {
-        console.log("Tabswitch Insert Error: " + error);
-    });
+        .catch(function(error) {
+            console.log("PageVisit Insert Error: " + error);
+        });
 
-    // update sync data message
+    // update sync message to show on front end
     await update_sync_data_msg();
 }
+
+
+
+
+
 
 
 
@@ -825,5 +726,16 @@ async function __reset_sync_ts()
         user opens a new tab (url = about:newtab or sth similar)
         OR
         user goes back to a previously opened tab (no webNavigation event)
+
+
+ TRANSITION QUALIFIER
+ "client_redirect":
+    Redirect(s) caused by JavaScript running in the page or a "refresh" pragma in the page's meta tag.
+ "server_redirect":
+    Redirect(s) caused by a 3XX HTTP status code sent from the server.
+ "forward_back"
+    The user used the forward or back button to trigger the navigation.
+ "from_address_bar"
+    The user triggered the navigation from the address bar.
 
  */
