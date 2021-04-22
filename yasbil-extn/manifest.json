@@ -9,6 +9,13 @@
     "scripts": ["dexie-3.0.3.js", "yasbil-utility.js", "yasbil-background-script.js"]
   },
 
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["yasbil-content-script.js"]
+    }
+  ],
+
   "browser_action": {
    "default_popup": "yasbil-browser-action-popup.html",
    "default_title": "YASBIL is off"

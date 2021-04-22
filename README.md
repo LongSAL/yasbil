@@ -57,7 +57,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
         - captures tab switches: user switches back to a webpage-tab previously opened
     - [webNavigation.onHistoryStateUpdated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated)
         - to capture webpages like YouTube which do not fire `webNavigation.onCompleted events`
-        - Note: this event is fired (i) often twice by Google SERPs, (ii) once by YouTube, (iii) never by many webpages 
+        - Note: this event is fired _(i)_ often twice by Google SERPs, _(ii)_ once by YouTube, _(iii)_ probably never by most webpages 
 
  
 | **Column** | **Description** |
@@ -123,8 +123,10 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 | ----------- | ----------- |
 |`m_id`|server only; PK in server|
 |`m_guid`|PK in client|
+|`session_guid`||
+|`url`||
 |`m_ts`|timestamp of mouse activity|
-|`m_act_typ`|activity type: `HOVER`, `CLICK`, `SCROLL` (others?)|
+|`m_event`|Javascript mouse event type: `click`, `dblclick`,  `contextmenu`, `scroll` (others?)|
 |`loc_x`||
 |`loc_y`||
 |--------------|--------------|
@@ -137,4 +139,19 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`page_height`| `document.documentElement.scrollHeight` webpage's scrollable height|
 |--------------|--------------|
 |.|capture text / context around click / hover etc|
+| `sync_ts`| only in client; 0 = not synced|
+
+
+----------------
+ 
+### `yasbil_session_pagetext`
+- captures [`innerText`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText)s of the webpage, once per unique URL per session
+- to help compare to terms seen in future queries
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`session_guid`||
+|`url`||
+|`page_text`|captured using `document.body.innerText` after page has loaded |
+|`crt_ts`|timestamp of capture / creation|
 | `sync_ts`| only in client; 0 = not synced|

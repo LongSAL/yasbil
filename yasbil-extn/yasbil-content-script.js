@@ -12,17 +12,37 @@
  *
  */
 
-//const tab_info = await browser.tabs.getCurrent() //doesn work
+//const tab_info = await browser.tabs.getCurrent() //doesn't work
 
-const result =
+let portToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+
+
+// -------------------- mouse listeners --------------------
+document.body.addEventListener('click', listener_mouse_click);
+function listener_mouse_click(e){cs_log_mouse('click', e);}
+
+
+// -------------------- mouse handler --------------------
+// single helper function to log all mouse events from content script (cs)
+function cs_log_mouse(m_event, e)
 {
-    zoom_level: window.devicePixelRatio,
-    browser_width: window.outerWidth,
-    browser_height: window.outerHeight,
-    viewport_width: document.documentElement.clientWidth,
-    viewport_height: document.documentElement.clientHeight,
-    page_width: document.documentElement.scrollWidth,
-    page_height: document.documentElement.scrollHeight
-};
+    portToBG.postMessage({
+        yasbil_msg: "DB_LOG_MOUSE",
+        yasbil_mouse_data: {
+            m_event: m_event,
+            page_x: e.pageX,
+            page_y: e.pageY,
+            target: e.target,
 
-result;
+            page_w: document.documentElement.scrollWidth,
+            page_h: document.documentElement.scrollHeight,
+            zoom: window.devicePixelRatio,
+            browser_w: window.outerWidth,
+            browser_h: window.outerHeight,
+            viewport_w: document.documentElement.clientWidth,
+            viewport_h: document.documentElement.clientHeight,
+        }
+    });
+}
+
+// TODO: on document ready, capture document.body.innerText

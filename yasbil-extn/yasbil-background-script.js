@@ -48,6 +48,7 @@ let db = new Dexie("yasbil_db");
 db.version(1).stores({
     yasbil_sessions: 'session_guid,sync_ts',
     yasbil_session_pagevisits: 'pv_guid,session_guid,title_upd,sync_ts',
+    yasbil_session_pagetext: '[session_guid+url]',
     //yasbil_session_framevisits: 'fv_guid',
 });
 
@@ -261,8 +262,8 @@ async function listener_webNav_onHistUpd(details)
 
 
 
-
-// --- single helper function to log pagevisits --------
+// -------------------- db_log_pagevisits --------------------
+// single helper function to log pagevisits
 // takes tabId, timestamp of visit, event-name that triggered this,
 // and optionally, if tab-switch
 async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
@@ -330,7 +331,97 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 
     // update sync message to show on front end
     await update_sync_data_msg();
+
+    // extract page text (if not done before)
+    db_log_page_text(tabInfo);
 }
+
+
+
+
+
+
+
+
+// -------------------- db_log_mousedata --------------------
+async function db_log_mouse(yasbil_mouse_data)
+{
+    console.log(yasbil_mouse_data);
+
+    // const data_row = {
+    //     m_event: 'constant',
+    //     m_guid: uuidv4(),
+    //     session_guid: get_session_id(),
+    //     win_id: tabInfo.windowId,
+    //     win_guid: get_win_guid(tabInfo.windowId),
+    //     tab_id: tabId,
+    //     tab_guid: get_tab_guid(tabId),
+    //     tab_width: tabInfo.width,
+    //     tab_height: tabInfo.height ,
+    //
+    //     m_ts: ts,
+    //     pv_url: tabInfo.url,
+    //     pv_title: tabInfo.title, // should be fully available
+    //     pv_hostname: url.hostname,
+    //     pv_rev_hostname: url.hostname.split('').reverse().join(''),
+    //     pv_transition_type: transition_typ.toUpperCase(),
+    //     hist_ts: hist_visit_time,
+    //     hist_visit_ct: hist_visit_count,
+    //     pv_srch_engine: se_info.search_engine,
+    //     pv_srch_qry: se_info.search_query,
+    //     sync_ts: 0,
+    // };
+
+    // console.log(data_row);
+
+    // await db.yasbil_session_mouse.add(data_row)
+    //     .catch(function(error) {
+    //         console.log("Mouse Insert Error: " + error);
+    //     });
+}
+
+
+
+
+// -------------------- db_log_page_text --------------------
+async function db_log_page_text(tabInfo)
+{
+    console.log('log page text');
+
+    const sess_id = get_session_id();
+    const url = tabInfo.url;
+
+    const row_exists = db.yasbil_session_pagetext
+        .where('[session_guid+url')
+        .equals([sess_id, url])
+        .first();
+
+    console.log(row_exists);
+
+    if(!row_exists)
+    {
+        const page_text = await browser.tabs.executeScript({
+            tabId: tabInfo.id,
+            code: 'document.body.innerText'
+        });
+
+        const data_row = {
+            session_guid: sess_id,
+            url: url,
+            page_text: page_text,
+            crt_ts: new Date().getTime(),
+            sync_ts: 0,
+        };
+
+        console.log(data_row);
+
+        await db.yasbil_session_pagetext.add(data_row)
+            .catch(function(error) {
+                console.log("PageText Insert Error: " + error);
+            });
+    }
+}
+
 
 
 
@@ -604,38 +695,74 @@ async function sync_table_data(table_name, pk, api_endpoint)
 
 
 // -------------------- Connection with Content Script -----------------
-let portFromCS;
 
-function connected(p)
+function listener_runtime_onConnect(p)
 {
-    portFromCS = p;
-
-    portFromCS.onMessage.addListener(async function(m)
+    p.onMessage.addListener(async function(m)
     {
-        yasbil_msg = m.yasbil_msg;
+        const yasbil_msg = m.yasbil_msg;
 
-        if(yasbil_msg === "LOG_START")
+        const is_logging = (get_session_id() !== "0") ;
+        const is_syncing = (get_sync_status() === "ON");
+
+        // ----- not logging, not syncing -----
+        if(!is_logging && !is_syncing)
         {
-            await db_log_start();
+            if(yasbil_msg === "LOG_START") {
+                await db_log_start();
+            }
+            else if(yasbil_msg === "DO_SYNC") {
+                do_sync_job();
+            }
+            else if(yasbil_msg === "__RESET_SYNC_TS") {
+                // call from front-end by:
+                // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
+                __reset_sync_ts();
+            }
         }
-        else if (yasbil_msg === "LOG_END")
+        // ----- logging; NOT syncing -----
+        else if(is_logging && !is_syncing)
         {
-            await db_log_end();
+            if (yasbil_msg === "DB_LOG_MOUSE") {
+                db_log_mouse(m.yasbil_mouse_data); //don't await (?) to let it run in BG?
+            }
+            else if (yasbil_msg === "LOG_END") {
+                await db_log_end();
+            }
         }
-        else if(yasbil_msg === "DO_SYNC")
+        // ----- syncing; NOT logging -----
+        else if(!is_logging && is_syncing)
         {
-            do_sync_job();
+            //what message can arise here?
         }
-        else if(yasbil_msg === "__RESET_SYNC_TS")
-        {
-            // call from front-end by:
-            // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
-            __reset_sync_ts();
-        }
+        // ----- 4th situation logging AND syncing NOT allowed -----
+
+        // if(yasbil_msg === "LOG_START")
+        // {
+        //     await db_log_start();
+        // }
+        // else if (yasbil_msg === "LOG_END")
+        // {
+        //     await db_log_end();
+        // }
+        // else if((yasbil_msg === "DB_LOG_MOUSE") && (get_session_id() !== "0"))
+        // {
+        //     await db_log_mouse(m.yasbil_mouse_data);
+        // }
+        // else if(yasbil_msg === "DO_SYNC")
+        // {
+        //     do_sync_job();
+        // }
+        // else if(yasbil_msg === "__RESET_SYNC_TS")
+        // {
+        //     // call from front-end by:
+        //     // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
+        //     __reset_sync_ts();
+        // }
     });
 }
 
-browser.runtime.onConnect.addListener(connected);
+browser.runtime.onConnect.addListener(listener_runtime_onConnect);
 
 
 

@@ -138,8 +138,8 @@ function refreshPopupElements()
     $('#sync_data_msg').html(get_sync_data_msg());
     $('p#sync_progress_msg').html(get_sync_progress_msg());
 
-    let is_logging = (get_session_id() !== "0") ;
-    let is_syncing = (get_sync_status() === "ON");
+    const is_logging = (get_session_id() !== "0") ;
+    const is_syncing = (get_sync_status() === "ON");
 
     // sync data: always show
 
