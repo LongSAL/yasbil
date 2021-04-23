@@ -63,7 +63,7 @@ $(document).ready(function()
     $('button#do_sync').click(function ()
     {
         // double-checking: no active logging session
-        if(get_session_id() === "0")
+        if(get_session_guid() === "0")
         {
             portToBG.postMessage({yasbil_msg: "DO_SYNC"});
             setLogOFF();
@@ -138,7 +138,7 @@ function refreshPopupElements()
     $('#sync_data_msg').html(get_sync_data_msg());
     $('p#sync_progress_msg').html(get_sync_progress_msg());
 
-    const is_logging = (get_session_id() !== "0") ;
+    const is_logging = (get_session_guid() !== "0") ;
     const is_syncing = (get_sync_status() === "ON");
 
     // sync data: always show

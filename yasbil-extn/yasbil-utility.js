@@ -15,14 +15,14 @@
 
 // ---------- synchronous storage / retrieval --------------
 
-//-------------------- get session ID: returns "0" if not in session -----------------
-function get_session_id()  {
+//-------------------- get session GUID: returns "0" if not in session -----------------
+function get_session_guid()  {
     return localStorage.getItem('YASBIL_SESSION_GUID');
 }
 
-//-------------------- set session ID -----------------
-function set_session_id(p_sess_id) {
-    localStorage.setItem('YASBIL_SESSION_GUID',  p_sess_id.trim());
+//-------------------- set session GUID -----------------
+function set_session_guid(p_session_guid) {
+    localStorage.setItem('YASBIL_SESSION_GUID',  p_session_guid.trim());
 }
 
 

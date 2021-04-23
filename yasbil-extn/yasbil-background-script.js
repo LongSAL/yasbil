@@ -20,7 +20,7 @@
 
 // initial state of browser extension: false
 console.log('Initializing YASBIL extn');
-set_session_id("0");
+set_session_guid("0");
 set_sync_status("OFF");
 
 
@@ -48,7 +48,7 @@ let db = new Dexie("yasbil_db");
 db.version(1).stores({
     yasbil_sessions: 'session_guid,sync_ts',
     yasbil_session_pagevisits: 'pv_guid,session_guid,title_upd,sync_ts',
-    yasbil_session_pagetext: '[session_guid+url]',
+    yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 });
 
@@ -102,9 +102,9 @@ async function db_log_start()
         sync_ts: 0,
     };
 
-    db.yasbil_sessions.add(data_row).then(async function ()
+    await db.yasbil_sessions.add(data_row).then(async function()
     {
-        set_session_id(session_guid);
+        set_session_guid(session_guid);
 
         await update_sync_data_msg();
 
@@ -147,7 +147,7 @@ async function db_log_end()
     browser.webNavigation.onHistoryStateUpdated.removeListener(listener_webNav_onHistUpd);
 
     // start the database update
-    let session_guid = get_session_id();
+    let session_guid = get_session_guid();
 
     if(session_guid && session_guid.length > 1)
     {
@@ -166,7 +166,7 @@ async function db_log_end()
 
 
         // Success - the data is updated!
-        set_session_id("0");
+        set_session_guid("0");
 
         await update_sync_data_msg();
 
@@ -298,10 +298,22 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
     if(is_tab_switch)
         transition_typ = "YASBIL_TAB_SWITCH";
 
+    // get page text and HTML
+    // executeScript() returns array of objects = result of the script in every injected frame
+    const page_text = await browser.tabs.executeScript(
+        tabId,
+        {code: 'document.body.innerText;'}
+    );
+
+    const page_html = await browser.tabs.executeScript(
+        tabId,
+        {code: 'document.body.innerHTML;'}
+    );
+
     const data_row = {
         pv_event: e_name,
         pv_guid: uuidv4(),
-        session_guid: get_session_id(),
+        session_guid: get_session_guid(),
         win_id: tabInfo.windowId,
         win_guid: get_win_guid(tabInfo.windowId),
         tab_id: tabId,
@@ -315,6 +327,10 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
         pv_hostname: url.hostname,
         pv_rev_hostname: url.hostname.split('').reverse().join(''),
         pv_transition_type: transition_typ.toUpperCase(),
+
+        pv_page_text: page_text[0], // taking the first element
+        pv_page_html: page_html[0],
+
         hist_ts: hist_visit_time,
         hist_visit_ct: hist_visit_count,
         pv_srch_engine: se_info.search_engine,
@@ -333,7 +349,7 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
     await update_sync_data_msg();
 
     // extract page text (if not done before)
-    db_log_page_text(tabInfo);
+    //db_log_page_text(tabInfo, ts, e_name);
 }
 
 
@@ -351,7 +367,7 @@ async function db_log_mouse(yasbil_mouse_data)
     // const data_row = {
     //     m_event: 'constant',
     //     m_guid: uuidv4(),
-    //     session_guid: get_session_id(),
+    //     session_guid: get_session_guid(),
     //     win_id: tabInfo.windowId,
     //     win_guid: get_win_guid(tabInfo.windowId),
     //     tab_id: tabId,
@@ -383,44 +399,15 @@ async function db_log_mouse(yasbil_mouse_data)
 
 
 
-// -------------------- db_log_page_text --------------------
-async function db_log_page_text(tabInfo)
-{
-    console.log('log page text');
 
-    const sess_id = get_session_id();
-    const url = tabInfo.url;
 
-    const row_exists = db.yasbil_session_pagetext
-        .where('[session_guid+url')
-        .equals([sess_id, url])
-        .first();
 
-    console.log(row_exists);
 
-    if(!row_exists)
-    {
-        const page_text = await browser.tabs.executeScript({
-            tabId: tabInfo.id,
-            code: 'document.body.innerText'
-        });
 
-        const data_row = {
-            session_guid: sess_id,
-            url: url,
-            page_text: page_text,
-            crt_ts: new Date().getTime(),
-            sync_ts: 0,
-        };
 
-        console.log(data_row);
 
-        await db.yasbil_session_pagetext.add(data_row)
-            .catch(function(error) {
-                console.log("PageText Insert Error: " + error);
-            });
-    }
-}
+
+
 
 
 
@@ -548,7 +535,7 @@ async function do_sync_job()
     finally
     {
         // let user see sync message for 10 seconds before retrying sync
-        await sleep(5000);
+        await sleep(10000);
         set_sync_status('OFF');
         //init/default condition of sync (for better UX - display of message)
         set_sync_result('INIT');
@@ -701,11 +688,12 @@ function listener_runtime_onConnect(p)
     p.onMessage.addListener(async function(m)
     {
         const yasbil_msg = m.yasbil_msg;
+        console.log(`YASBIL_MSG = ${yasbil_msg}`);
 
-        const is_logging = (get_session_id() !== "0") ;
+        const is_logging = (get_session_guid() !== "0") ;
         const is_syncing = (get_sync_status() === "ON");
 
-        // ----- not logging, not syncing -----
+        // ----- NOT logging; NOT syncing -----
         if(!is_logging && !is_syncing)
         {
             if(yasbil_msg === "LOG_START") {
@@ -745,7 +733,7 @@ function listener_runtime_onConnect(p)
         // {
         //     await db_log_end();
         // }
-        // else if((yasbil_msg === "DB_LOG_MOUSE") && (get_session_id() !== "0"))
+        // else if((yasbil_msg === "DB_LOG_MOUSE") && (get_session_guid() !== "0"))
         // {
         //     await db_log_mouse(m.yasbil_mouse_data);
         // }
@@ -797,29 +785,6 @@ async function __reset_sync_ts()
 
 
 
-// browser.browserAction.onClicked.addListener(function() {
-//     portFromCS.postMessage({greeting: "they clicked the button!"});
-// });
-
-
-
-//-------------------- Session Details -----------------
-// function logSessionSTart(){
-//
-// }
-
-
-// function logURL(requestDetails) {
-//     console.log("YASBIL Loading: " + requestDetails.url);
-// }
-//
-// browser.webRequest.onBeforeRequest.addListener(
-//     logURL,
-//     {urls: ["<all_urls>"]}
-// );
-
-
-
 
 /******************* TRANSITION TYPES ******************************/
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType
@@ -866,3 +831,58 @@ async function __reset_sync_ts()
     The user triggered the navigation from the address bar.
 
  */
+
+
+
+
+
+
+
+
+
+
+/** --------------  unused code ----------------  */
+// -------------------- db_log_page_text --------------------
+/*********
+ async function db_log_page_text(tabInfo, ts, e_name)
+ {
+
+    const session_guid = get_session_guid();
+    const url = tabInfo.url;
+
+    // returns 0 or count
+    const row_exists = await db.yasbil_session_pagetext
+        .where('[session_guid+url]')
+        .equals([session_guid, url])
+        .count();
+
+    console.log('log pagetext row exists?:');
+    console.log(row_exists);
+
+    if(!row_exists)
+    {
+        //returns array of objects = result of the script
+        // in every injected frame
+        const page_text = await browser.tabs.executeScript(
+            tabInfo.id,
+            {code: 'document.body.innerText;'}
+        );
+
+        const data_row = {
+            pt_guid: uuidv4(),
+            session_guid: session_guid,
+            url: url,
+            page_text: page_text[0], // taking the first element
+            crt_ts: ts, //same as pv_ts //new Date().getTime(),
+            sync_ts: 0,
+        };
+
+        console.log(data_row);
+
+        await db.yasbil_session_pagetext.add(data_row)
+            .catch(function(error) {
+                console.log("PageText Insert Error: " + error);
+            });
+    }
+}
+ *************/

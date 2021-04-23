@@ -59,6 +59,8 @@ interaction with YASBIL (both browser extension and WordPress plugin).
         - to capture webpages like YouTube which do not fire `webNavigation.onCompleted events`
         - Note: this event is fired _(i)_ often twice by Google SERPs, _(ii)_ once by YouTube, _(iii)_ probably never by most webpages 
 
+- [`innerText`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText) and [`innerHTML`](https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML) to capture page content, and see if text on page come up in future search query terms
+    - YouTube fires `onHistoryStateUpdated` **before** the page has completely loaded; so these properties may contain stale values from previous page  
  
 | **Column** | **Description** |
 | ----------- | ----------- |
@@ -79,6 +81,8 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`pv_hostname`||
 |`pv_rev_hostname`| for easy lookup of TLD types visited|
 |`pv_transition_type`| [Transition type](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType)|
+|`pv_page_text`|captured using `document.body.innerText` after page has loaded |
+|`pv_page_html`|captured using `document.body.innerText` after page has loaded |
 |`hist_ts`||
 |`hist_visit_ct`||
 |`pv_srch_engine`||
@@ -86,32 +90,11 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|
 
 
-#### More Resources:
-- [How to Get the Screen, Window, and Web Page Sizes in JavaScript](https://dmitripavlutin.com/screen-window-page-sizes/)
-- [Guide on Viewports](https://www.quirksmode.org/mobile/viewports.html)
-
-
-
 ----------------
  
 ### `yasbil_session_framevisits` 
 - iframe navigations (frame_id > 0)
 - similar to `yasbil_session_pagevisits`
- 
-
-
- ----------------
- 
-### `yasbil_session_history`
- - to get better values for transition type and transition qualifier
- - to capture those webpages which do not fire pagevisits (e.g. YouTube?)
-
-
- 
-
-
-
-
 
 
 ----------------
@@ -142,15 +125,36 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 | `sync_ts`| only in client; 0 = not synced|
 
 
+
+#### More Resources:
+- [How to Get the Screen, Window, and Web Page Sizes in JavaScript](https://dmitripavlutin.com/screen-window-page-sizes/)
+- [Guide on Viewports](https://www.quirksmode.org/mobile/viewports.html)
+
+
+
+
+
 ----------------
  
-### `yasbil_session_pagetext`
-- captures [`innerText`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText)s of the webpage, once per unique URL per session
-- to help compare to terms seen in future queries
+### ~~`yasbil_session_history`~~
+ - to get better values for transition type and transition qualifier
+ - to capture those webpages which do not fire pagevisits (e.g. YouTube?)
+
+
+ 
+
+
+----------------
+ 
+### ~~`yasbil_session_pagetext`~~
+
 
 | **Column** | **Description** |
 | ----------- | ----------- |
+|`pt_id`|server only; PK in server|
+|`pt_guid`|PK in client|
 |`session_guid`||
+|`pv_event`|which navigation event triggerred this page capture |
 |`url`||
 |`page_text`|captured using `document.body.innerText` after page has loaded |
 |`crt_ts`|timestamp of capture / creation|
