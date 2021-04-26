@@ -345,8 +345,13 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
             console.log("PageVisit Insert Error: " + error);
         });
 
+
+    // start(?) logging mouse
+    //db_log_mouse(tabId);
+
     // update sync message to show on front end
-    await update_sync_data_msg();
+    // no need to await
+    update_sync_data_msg();
 
     // extract page text (if not done before)
     //db_log_page_text(tabInfo, ts, e_name);
@@ -360,9 +365,28 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 
 
 // -------------------- db_log_mousedata --------------------
-async function db_log_mouse(yasbil_mouse_data)
+async function db_log_mouse(yasbil_mouse_data) //tabId)
 {
     console.log(yasbil_mouse_data);
+
+    // console.log('db_log_mouse', new Date().getTime());
+    //
+    // const p_CS_mouse = browser.tabs.connect(
+    //     tabId,
+    //     {name: "port-bg-to-cs-mouse"}
+    // );
+    //
+    // p_CS_mouse.onMessage.addListener(async function(m)
+    // {
+    //     const yasbil_msg = m.yasbil_msg_mouse;
+    //
+    //     console.log(m);
+    //
+    // });
+
+
+
+
 
     // const data_row = {
     //     m_event: 'constant',
@@ -681,10 +705,15 @@ async function sync_table_data(table_name, pk, api_endpoint)
 
 
 
-// -------------------- Connection with Content Script -----------------
+// -------------------- Connection with Popup Script -----------------
+browser.runtime.onConnect.addListener(listener_runtime_onConnect);
 
 function listener_runtime_onConnect(p)
 {
+    //console.log('runtime.onConnect', new Date().getTime());
+    // you may distinguish different connections by Port
+    // https://stackoverflow.com/a/36465331
+
     p.onMessage.addListener(async function(m)
     {
         const yasbil_msg = m.yasbil_msg;
@@ -750,7 +779,7 @@ function listener_runtime_onConnect(p)
     });
 }
 
-browser.runtime.onConnect.addListener(listener_runtime_onConnect);
+
 
 
 

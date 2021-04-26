@@ -9,7 +9,9 @@
 //-------------------- Establish Connection with BG Script -----------------
 // cs = content script
 // bg = background script
-let portToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+// ba = browser action
+let portPopupToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+// console.log(portPopupToBG);
 
 $(document).ready(function()
 {
@@ -27,7 +29,7 @@ $(document).ready(function()
         {
             if(this.checked) // logging session start (not syncing)
             {
-                portToBG.postMessage({yasbil_msg: "LOG_START"});
+                portPopupToBG.postMessage({yasbil_msg: "LOG_START"});
 
                 // log btn: on
                 // log btn: show
@@ -41,7 +43,7 @@ $(document).ready(function()
             }
             else // logging session end
             {
-                portToBG.postMessage({yasbil_msg: "LOG_END"});
+                portPopupToBG.postMessage({yasbil_msg: "LOG_END"});
 
                 // log btn: off
                 // log btn: show
@@ -65,7 +67,7 @@ $(document).ready(function()
         // double-checking: no active logging session
         if(get_session_guid() === "0")
         {
-            portToBG.postMessage({yasbil_msg: "DO_SYNC"});
+            portPopupToBG.postMessage({yasbil_msg: "DO_SYNC"});
             setLogOFF();
             $('div#log_controls').hide();
             $('div#sync_controls').hide();
