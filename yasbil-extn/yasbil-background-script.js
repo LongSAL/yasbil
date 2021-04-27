@@ -345,16 +345,9 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
             console.log("PageVisit Insert Error: " + error);
         });
 
-
-    // start(?) logging mouse
-    //db_log_mouse(tabId);
-
     // update sync message to show on front end
     // no need to await
     update_sync_data_msg();
-
-    // extract page text (if not done before)
-    //db_log_page_text(tabInfo, ts, e_name);
 }
 
 
@@ -365,9 +358,13 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 
 
 // -------------------- db_log_mousedata --------------------
-async function db_log_mouse(yasbil_mouse_data) //tabId)
+async function db_log_interaction(yasbil_ev_data, tabInfo, p_url)
 {
-    console.log(yasbil_mouse_data);
+    // do no track certain blocked domains (e.g. gmail, about:, etc)
+    if(!is_tracking_allowed(p_url || tabInfo.url))
+        return;
+
+    console.log(yasbil_ev_data);
 
     // console.log('db_log_mouse', new Date().getTime());
     //
@@ -388,29 +385,35 @@ async function db_log_mouse(yasbil_mouse_data) //tabId)
 
 
 
-    // const data_row = {
-    //     m_event: 'constant',
-    //     m_guid: uuidv4(),
-    //     session_guid: get_session_guid(),
-    //     win_id: tabInfo.windowId,
-    //     win_guid: get_win_guid(tabInfo.windowId),
-    //     tab_id: tabId,
-    //     tab_guid: get_tab_guid(tabId),
-    //     tab_width: tabInfo.width,
-    //     tab_height: tabInfo.height ,
-    //
-    //     m_ts: ts,
-    //     pv_url: tabInfo.url,
-    //     pv_title: tabInfo.title, // should be fully available
-    //     pv_hostname: url.hostname,
-    //     pv_rev_hostname: url.hostname.split('').reverse().join(''),
-    //     pv_transition_type: transition_typ.toUpperCase(),
-    //     hist_ts: hist_visit_time,
-    //     hist_visit_ct: hist_visit_count,
-    //     pv_srch_engine: se_info.search_engine,
-    //     pv_srch_qry: se_info.search_query,
-    //     sync_ts: 0,
-    // };
+    const data_row = {
+        int_event: yasbil_ev_data.e_name,
+        int_guid: uuidv4(),
+        session_guid: get_session_guid(),
+        win_id: tabInfo.windowId,
+        win_guid: get_win_guid(tabInfo.windowId),
+        tab_id: tabId,
+        tab_guid: get_tab_guid(tabId),
+
+        // tab_width: tabInfo.width,
+        // tab_height: tabInfo.height ,
+
+        int_ts: yasbil_ev_data.e_ts,
+        int_url: p_url || tabInfo.url,
+
+        // pv_title: tabInfo.title, // should be fully available
+        // pv_hostname: url.hostname,
+        // pv_rev_hostname: url.hostname.split('').reverse().join(''),
+        // pv_transition_type: transition_typ.toUpperCase(),
+        //
+        // pv_page_text: page_text[0], // taking the first element
+        // pv_page_html: page_html[0],
+        //
+        // hist_ts: hist_visit_time,
+        // hist_visit_ct: hist_visit_count,
+        // pv_srch_engine: se_info.search_engine,
+        // pv_srch_qry: se_info.search_query,
+        sync_ts: 0,
+    };
 
     // console.log(data_row);
 
@@ -714,10 +717,12 @@ function listener_runtime_onConnect(p)
     // you may distinguish different connections by Port
     // https://stackoverflow.com/a/36465331
 
-    p.onMessage.addListener(async function(m)
+    // https://stackoverflow.com/a/40991056
+    p.onMessage.addListener(async function(m, sendingPort)
     {
         const yasbil_msg = m.yasbil_msg;
         console.log(`YASBIL_MSG = ${yasbil_msg}`);
+        console.log(m);
 
         const is_logging = (get_session_guid() !== "0") ;
         const is_syncing = (get_sync_status() === "ON");
@@ -740,8 +745,12 @@ function listener_runtime_onConnect(p)
         // ----- logging; NOT syncing -----
         else if(is_logging && !is_syncing)
         {
-            if (yasbil_msg === "DB_LOG_MOUSE") {
-                db_log_mouse(m.yasbil_mouse_data); //don't await (?) to let it run in BG?
+            if (yasbil_msg === "DB_LOG_INTERACTION") {
+                db_log_interaction(
+                    m.yasbil_ev_data,
+                    sendingPort.sender.tab,
+                    sendingPort.url
+                ); //don't await (?) to let it run in BG?
             }
             else if (yasbil_msg === "LOG_END") {
                 await db_log_end();
@@ -754,28 +763,6 @@ function listener_runtime_onConnect(p)
         }
         // ----- 4th situation logging AND syncing NOT allowed -----
 
-        // if(yasbil_msg === "LOG_START")
-        // {
-        //     await db_log_start();
-        // }
-        // else if (yasbil_msg === "LOG_END")
-        // {
-        //     await db_log_end();
-        // }
-        // else if((yasbil_msg === "DB_LOG_MOUSE") && (get_session_guid() !== "0"))
-        // {
-        //     await db_log_mouse(m.yasbil_mouse_data);
-        // }
-        // else if(yasbil_msg === "DO_SYNC")
-        // {
-        //     do_sync_job();
-        // }
-        // else if(yasbil_msg === "__RESET_SYNC_TS")
-        // {
-        //     // call from front-end by:
-        //     // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
-        //     __reset_sync_ts();
-        // }
     });
 }
 

@@ -7,80 +7,207 @@
  * This script runs on all pages visited by the user
  * https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/executeScript
  *
- * The result of the script is the last evaluated statement,
- * which is similar to what would be output
+ * jQuery to JS
+ * http://youmightnotneedjquery.com/
  *
  */
 
-//const tab_info = await browser.tabs.getCurrent() //doesn't work
-
-console.log('content script started', new Date().getTime());
-
-// use tabs.connect
-// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/connect
-// whenever a tab's URL changes, (or status changes from loading to complete?)
-// initiate connection from BG script?
+/**
+ * ------ EVENTS LIST ---------
+ * UI Events: https://www.w3schools.com/jsref/obj_uievent.asp
+ *
+ * MOUSE: https://www.w3schools.com/jsref/obj_mouseevent.asp
+ * onmousemove: occurs every time the mouse pointer is moved over the element
+ * mouseenter: only occurs when the mouse pointer enters the element
+ * onmouseover: event occurs when the mouse pointer enters the element, and its child elements
+ *
+ * SCROLL:
+ *
+ *
+ * WHEEL: https://www.w3schools.com/jsref/obj_wheelevent.asp
+ *
+ */
 
 
 // let portToBG2 = browser.runtime.connect({name:"port-ba-popup-to-bg-2"});
-
 //console.log(portToBG);
 
-let p_BG_mouse = browser.runtime.connect({name:"port-ba-popup-to-bg"}); //null
+const p_BG_interaction = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+//log mouse move only if cursor stable for 40 milliseconds
+// (Huang+, CHI'11)'s method not working
+const MOUSE_LOG_THRESH = 1 * 1000;
+let prev_move_log_ts = new Date().getTime();
+//let prev_mouse_x = -1, prev_mouse_y = -1;
+
+// -------------------- event listeners --------------------
 
 
-// -------------------- mouse listeners --------------------
-document.body.addEventListener('click', listener_mouse_click);
-function listener_mouse_click(e){cs_log_mouse('click', e);}
+// global mousemove
+// document.addEventListener('mousemove', listener_mousemove);
+// function listener_mousemove(e){cs_log_interaction('MOUSE_MOVE', e);}
 
+// mouseover on anchors
+document.addEventListener('mouseover', function(e) {
+    const closest_a = e.target.closest('a');
+    if(closest_a){
+        cs_log_interaction('MOUSE_HOVER_ANCHOR', e, closest_a);
+    }
+});
 
-// -------------------- mouse handler --------------------
-// single helper function to log all mouse events from content script (cs)
+//mouseclick
+document.addEventListener('click', function(e) {
+    const closest_a = e.target.closest('a');
+    if(closest_a){
+        cs_log_interaction('MOUSE_CLICK_ANCHOR', e, closest_a);
+    }
+    else{
+        cs_log_interaction('MOUSE_CLICK', e);
+    }
+});
 
-async function cs_log_mouse(m_event, e)
+document.addEventListener('contextmenu', function(e) {
+    const closest_a = e.target.closest('a');
+    if(closest_a){
+        cs_log_interaction('MOUSE_RCLICK_ANCHOR', e, closest_a);
+    }
+    else{
+        cs_log_interaction('MOUSE_RCLICK', e);
+    }
+});
+
+/*
+console.log('2');
+// anchor (link) mouse over (hover) and click
+const a_tags_list = document.querySelectorAll('a')
+for (const a_tag of a_tags_list)
 {
-    if(m_event === 'click')
-    {
-        p_BG_mouse.postMessage({
-            yasbil_msg: "DB_LOG_MOUSE",
-            yasbil_mouse_data: {
-                m_event: m_event,
-                page_x: e.pageX,
-                page_y: e.pageY,
+    a_tag.addEventListener('mouseover', function(e) {
+        cs_log_interaction('MOUSE_HOVER_ANCHOR', e);
+    });
 
-                target_text: e.target.innerText,
+    a_tag.addEventListener('click', function(e) {
+        cs_log_interaction('MOUSE_CLICK_ANCHOR', e);
+    });
+}
+console.log('3');
 
-                page_w: document.documentElement.scrollWidth,
-                page_h: document.documentElement.scrollHeight,
-                zoom: window.devicePixelRatio,
-                browser_w: window.outerWidth,
-                browser_h: window.outerHeight,
-                viewport_w: document.documentElement.clientWidth,
-                viewport_h: document.documentElement.clientHeight,
+// global click
+document.body.addEventListener('click', listener_click);
+function listener_click(e){}
+*/
+//
+// console.log('4');
+//
+// // global right click
+// document.body.addEventListener('contextmenu', listener_contextmenu);
+// function listener_contextmenu(e){cs_log_interaction('MOUSE_RCLICK', e);}
+//
+// console.log('5');
+//
+// document.body.addEventListener('dblclick', listener_dblclick);
+// function listener_dblclick(e){cs_log_interaction('MOUSE_DBLCLICK', e);}
+//
+// console.log('6');
+//
+// document.body.addEventListener('scroll', listener_scroll);
+// function listener_scroll(e){cs_log_interaction('SCROLL', e);}
+//
+// console.log('7');
 
-                target_html: e.target.innerHTML,
-            }
-        });
+// -------------------- handler --------------------
+// single helper function to log all interaction events from content script (cs)
+
+function cs_log_interaction(e_name, e, closest_a = null)
+{
+    //log mouse move only after THRESH time interval
+    if(e_name === 'MOUSE_MOVE' && (new Date().getTime() - prev_move_log_ts) < MOUSE_LOG_THRESH)
+        return;
+
+    let sendMsg = true;
+
+    // getting dom_branch to parent
+    // https://stackoverflow.com/a/8729274
+    let el = e.target;
+    let parent_els = [];
+    while (el){
+        parent_els.push(el.tagName.toUpperCase());
+        if(!el.parentElement)
+            break
+        el = el.parentElement;
     }
-    else if(m_event === 'scroll')
-    {
 
+    // constant data for all interaction events
+    const msg_obj = {
+        yasbil_msg: "DB_LOG_INTERACTION",
+        yasbil_ev_data: {
+            e_name: e_name,
+            e_ts: new Date().getTime(),
+            //page_url: window.location.href, //obtained by tabInfo
+
+            dom_branch: parent_els.join('|'), //path from current element upto <HTML> in DOM
+
+            zoom: window.devicePixelRatio,
+
+            page_w: document.documentElement.scrollWidth, //page width
+            page_h: document.documentElement.scrollHeight, //page height
+            page_x: window.pageXOffset, //page horizontally scrolled
+            page_y: window.pageYOffset, //page vertically scrolled
+            viewport_w: document.documentElement.clientWidth, //viewport width
+            viewport_h: document.documentElement.clientHeight, //viewport height
+            browser_w: window.outerWidth, //browser window width
+            browser_h: window.outerHeight, //browser window height
+
+            target_text: e.target.innerText+'', //rendered text of the target element
+            target_html: e.target.innerHTML, //html of the target element
+
+            closest_a_text: '',
+            closest_a_html: '',
+        }
+    };
+
+    if(closest_a)
+    {
+        msg_obj.yasbil_ev_data.closest_a_text = closest_a.innerText;
+        msg_obj.yasbil_ev_data.closest_a_html = closest_a.innerHTML;
     }
 
+    if(e_name === 'MOUSE_MOVE')
+    {
+        //X-Y location of the mouse pointer
+        msg_obj.yasbil_ev_data.mouse_x = e.pageX;
+        msg_obj.yasbil_ev_data.mouse_y = e.pageY;
 
-    console.log('CS:', m_event, new Date().getTime());
+        prev_move_log_ts = msg_obj.yasbil_ev_data.e_ts;
+        // prev_mouse_x = e.pageX;
+        // prev_mouse_y = e.pageY;
+
+    }
+    else if([
+        'MOUSE_HOVER_ANCHOR',
+        'MOUSE_CLICK_ANCHOR',
+        'MOUSE_CLICK',
+        'MOUSE_RCLICK_ANCHOR',
+        'MOUSE_RCLICK'
+    ].includes(e_name))
+    {
+
+        //X-Y location of the mouse pointer
+        msg_obj.yasbil_ev_data.mouse_x = e.pageX;
+        msg_obj.yasbil_ev_data.mouse_y = e.pageY;
+
+    }
+    else if(e_name === 'SCROLL')
+    {
+        // no additional data properties necessary
+    }
+
+    if(sendMsg){
+        p_BG_interaction.postMessage(msg_obj);
+    }
+
+    console.log('CS:', e_name, new Date().getTime());
 }
 
 
-
-/******** unused code *******/
-// -------------------- comm with BG --------------------
-//browser.runtime.onConnect.addListener(cs_listener_runtime_onConnect);
-
-/*function cs_listener_runtime_onConnect(p)
-{
-    console.log('cs_listener_runtime_onConnect', new Date().getTime());
-    p_BG_mouse = p;
-}*/
 
 
