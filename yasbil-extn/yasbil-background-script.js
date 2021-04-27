@@ -47,8 +47,9 @@ let db = new Dexie("yasbil_db");
 
 db.version(1).stores({
     yasbil_sessions: 'session_guid,sync_ts',
-    yasbil_session_pagevisits: 'pv_guid,session_guid,title_upd,sync_ts',
-    yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
+    yasbil_session_pagevisits: 'pv_guid,sync_ts',
+    yasbil_session_mouse: 'm_guid,sync_ts',
+    //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 });
 
@@ -358,47 +359,52 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 
 
 // -------------------- db_log_mousedata --------------------
-async function db_log_interaction(yasbil_ev_data, tabInfo, p_url)
+async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
     if(!is_tracking_allowed(p_url || tabInfo.url))
         return;
 
-    console.log(yasbil_ev_data);
-
-    // console.log('db_log_mouse', new Date().getTime());
-    //
-    // const p_CS_mouse = browser.tabs.connect(
-    //     tabId,
-    //     {name: "port-bg-to-cs-mouse"}
-    // );
-    //
-    // p_CS_mouse.onMessage.addListener(async function(m)
-    // {
-    //     const yasbil_msg = m.yasbil_msg_mouse;
-    //
-    //     console.log(m);
-    //
-    // });
-
-
-
+    // console.log(yasbil_ev_data);
 
 
     const data_row = {
-        int_event: yasbil_ev_data.e_name,
-        int_guid: uuidv4(),
+        m_event: yasbil_ev_data.e_name,
+        m_guid: uuidv4(),
         session_guid: get_session_guid(),
         win_id: tabInfo.windowId,
         win_guid: get_win_guid(tabInfo.windowId),
         tab_id: tabId,
         tab_guid: get_tab_guid(tabId),
 
+        m_url: p_url || tabInfo.url,
+        m_ts: yasbil_ev_data.e_ts,
+
+        zoom: yasbil_ev_data.zoom,
+        page_w: yasbil_ev_data.page_w,
+        page_h: yasbil_ev_data.page_h,
+        page_x: yasbil_ev_data.page_x,
+        page_y: yasbil_ev_data.page_y,
+        viewport_w: yasbil_ev_data.viewport_w,
+        viewport_h: yasbil_ev_data.viewport_h,
+        browser_w: yasbil_ev_data.browser_w,
+        browser_h: yasbil_ev_data.browser_h,
+
+        dom_path: yasbil_ev_data.dom_path,
+        target_text: yasbil_ev_data.target_text,
+        target_html: yasbil_ev_data.target_html,
+        closest_a_text: yasbil_ev_data.closest_a_text,
+        closest_a_html: yasbil_ev_data.closest_a_html,
+        mouse_x: yasbil_ev_data.mouse_x,
+        mouse_y: yasbil_ev_data.mouse_y,
+        hover_dur: yasbil_ev_data.hover_dur,
+
+
+        sync_ts: 0,
+
+
         // tab_width: tabInfo.width,
         // tab_height: tabInfo.height ,
-
-        int_ts: yasbil_ev_data.e_ts,
-        int_url: p_url || tabInfo.url,
 
         // pv_title: tabInfo.title, // should be fully available
         // pv_hostname: url.hostname,
@@ -412,15 +418,14 @@ async function db_log_interaction(yasbil_ev_data, tabInfo, p_url)
         // hist_visit_ct: hist_visit_count,
         // pv_srch_engine: se_info.search_engine,
         // pv_srch_qry: se_info.search_query,
-        sync_ts: 0,
     };
 
-    // console.log(data_row);
+    console.log(data_row);
 
-    // await db.yasbil_session_mouse.add(data_row)
-    //     .catch(function(error) {
-    //         console.log("Mouse Insert Error: " + error);
-    //     });
+    await db.yasbil_session_mouse.add(data_row)
+        .catch(function(error) {
+            console.log("Mouse Insert Error: " + error);
+        });
 }
 
 
@@ -745,8 +750,8 @@ function listener_runtime_onConnect(p)
         // ----- logging; NOT syncing -----
         else if(is_logging && !is_syncing)
         {
-            if (yasbil_msg === "DB_LOG_INTERACTION") {
-                db_log_interaction(
+            if (yasbil_msg === "DB_LOG_MOUSE") {
+                db_log_mouse(
                     m.yasbil_ev_data,
                     sendingPort.sender.tab,
                     sendingPort.url

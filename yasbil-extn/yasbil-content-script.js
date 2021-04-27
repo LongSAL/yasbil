@@ -33,91 +33,62 @@
 //console.log(portToBG);
 
 const p_BG_interaction = browser.runtime.connect({name:"port-ba-popup-to-bg"});
-//log mouse move only if cursor stable for 40 milliseconds
-// (Huang+, CHI'11)'s method not working
-const MOUSE_LOG_THRESH = 1 * 1000;
+// NOTE: (Huang+, CHI'11)'s method not working
+//log mouse move after x milliseconds
+const MOUSE_LOG_THRESH = 1000;
 let prev_move_log_ts = new Date().getTime();
 //let prev_mouse_x = -1, prev_mouse_y = -1;
 
-// -------------------- event listeners --------------------
+// log hover events only if greater than x milliseconds
+const HOVER_DUR_THRESH = 500;
+
+
+
+// -------------------- MOUSE event listeners --------------------
 
 
 // global mousemove
+// TODO: is mousemove necessary? or mousehover enough?
 // document.addEventListener('mousemove', listener_mousemove);
-// function listener_mousemove(e){cs_log_interaction('MOUSE_MOVE', e);}
+// function listener_mousemove(e){cs_log_mouse('MOUSE_MOVE', e);}
 
-// mouseover on anchors
+
+// hover duration: mouseneter + mouseleave
+// https://stackoverflow.com/a/5974898
 document.addEventListener('mouseover', function(e) {
-    const closest_a = e.target.closest('a');
-    if(closest_a){
-        cs_log_interaction('MOUSE_HOVER_ANCHOR', e, closest_a);
+    //record mouseenter time in data-attribute
+    e.target.dataset.yasbil_hover_st = new Date().getTime();
+});
+
+document.addEventListener('mouseout', function(e) {
+    const hover_end = new Date().getTime(); //mouseleave time
+    //calculate the difference in ms
+    const hover_dur = ( hover_end - e.target.dataset.yasbil_hover_st );
+    if(hover_dur >= HOVER_DUR_THRESH){
+        cs_log_mouse('MOUSE_HOVER', e, e.target.closest('a'), hover_dur);
     }
 });
 
-//mouseclick
+//left click
 document.addEventListener('click', function(e) {
-    const closest_a = e.target.closest('a');
-    if(closest_a){
-        cs_log_interaction('MOUSE_CLICK_ANCHOR', e, closest_a);
-    }
-    else{
-        cs_log_interaction('MOUSE_CLICK', e);
-    }
+    cs_log_mouse('MOUSE_CLICK', e, e.target.closest('a'));
 });
 
+//right click
 document.addEventListener('contextmenu', function(e) {
-    const closest_a = e.target.closest('a');
-    if(closest_a){
-        cs_log_interaction('MOUSE_RCLICK_ANCHOR', e, closest_a);
-    }
-    else{
-        cs_log_interaction('MOUSE_RCLICK', e);
-    }
+    cs_log_mouse('MOUSE_RCLICK', e, e.target.closest('a'));
 });
 
-/*
-console.log('2');
-// anchor (link) mouse over (hover) and click
-const a_tags_list = document.querySelectorAll('a')
-for (const a_tag of a_tags_list)
-{
-    a_tag.addEventListener('mouseover', function(e) {
-        cs_log_interaction('MOUSE_HOVER_ANCHOR', e);
-    });
+//double click
+document.addEventListener('dblclick', function(e) {
+    cs_log_mouse('MOUSE_DBLCLICK', e, e.target.closest('a'));
+});
 
-    a_tag.addEventListener('click', function(e) {
-        cs_log_interaction('MOUSE_CLICK_ANCHOR', e);
-    });
-}
-console.log('3');
 
-// global click
-document.body.addEventListener('click', listener_click);
-function listener_click(e){}
-*/
-//
-// console.log('4');
-//
-// // global right click
-// document.body.addEventListener('contextmenu', listener_contextmenu);
-// function listener_contextmenu(e){cs_log_interaction('MOUSE_RCLICK', e);}
-//
-// console.log('5');
-//
-// document.body.addEventListener('dblclick', listener_dblclick);
-// function listener_dblclick(e){cs_log_interaction('MOUSE_DBLCLICK', e);}
-//
-// console.log('6');
-//
-// document.body.addEventListener('scroll', listener_scroll);
-// function listener_scroll(e){cs_log_interaction('SCROLL', e);}
-//
-// console.log('7');
 
-// -------------------- handler --------------------
-// single helper function to log all interaction events from content script (cs)
-
-function cs_log_interaction(e_name, e, closest_a = null)
+// -------------------- MOUSE handler --------------------
+// single function to log all mouse interaction events from content script (cs)
+function cs_log_mouse(e_name, e, closest_a = null, hover_dur= 0)
 {
     //log mouse move only after THRESH time interval
     if(e_name === 'MOUSE_MOVE' && (new Date().getTime() - prev_move_log_ts) < MOUSE_LOG_THRESH)
@@ -128,40 +99,43 @@ function cs_log_interaction(e_name, e, closest_a = null)
     // getting dom_branch to parent
     // https://stackoverflow.com/a/8729274
     let el = e.target;
-    let parent_els = [];
-    while (el){
-        parent_els.push(el.tagName.toUpperCase());
+    let dom_path_arr = [];
+    while (el) {
+        dom_path_arr.push(el.tagName.toUpperCase());
         if(!el.parentElement)
             break
         el = el.parentElement;
     }
 
-    // constant data for all interaction events
+    // constant data for all mouse interaction events
     const msg_obj = {
-        yasbil_msg: "DB_LOG_INTERACTION",
+        yasbil_msg: "DB_LOG_MOUSE",
         yasbil_ev_data: {
             e_name: e_name,
             e_ts: new Date().getTime(),
             //page_url: window.location.href, //obtained by tabInfo
 
-            dom_branch: parent_els.join('|'), //path from current element upto <HTML> in DOM
+            //getting viewport properties (using ES6 spread notation)
+            // https://stackoverflow.com/a/36044262
+            ...get_viewport_properties(),
 
-            zoom: window.devicePixelRatio,
-
-            page_w: document.documentElement.scrollWidth, //page width
-            page_h: document.documentElement.scrollHeight, //page height
-            page_x: window.pageXOffset, //page horizontally scrolled
-            page_y: window.pageYOffset, //page vertically scrolled
-            viewport_w: document.documentElement.clientWidth, //viewport width
-            viewport_h: document.documentElement.clientHeight, //viewport height
-            browser_w: window.outerWidth, //browser window width
-            browser_h: window.outerHeight, //browser window height
+            //path from current element upto <HTML> in DOM
+            //if there is 'A' in dom_path, event was over an anchor tag
+            dom_path: dom_path_arr.join('|'),
 
             target_text: e.target.innerText+'', //rendered text of the target element
             target_html: e.target.innerHTML, //html of the target element
 
+            //only if closest a found
             closest_a_text: '',
             closest_a_html: '',
+
+            //for hover and click events
+            mouse_x: -1,
+            mouse_y: -1,
+
+            // for hover event (mouseout - mousein)
+            hover_dur: hover_dur,
         }
     };
 
@@ -183,11 +157,10 @@ function cs_log_interaction(e_name, e, closest_a = null)
 
     }
     else if([
-        'MOUSE_HOVER_ANCHOR',
-        'MOUSE_CLICK_ANCHOR',
+        'MOUSE_HOVER',
         'MOUSE_CLICK',
-        'MOUSE_RCLICK_ANCHOR',
-        'MOUSE_RCLICK'
+        'MOUSE_RCLICK',
+        'MOUSE_DBLCLICK',
     ].includes(e_name))
     {
 
@@ -196,18 +169,61 @@ function cs_log_interaction(e_name, e, closest_a = null)
         msg_obj.yasbil_ev_data.mouse_y = e.pageY;
 
     }
-    else if(e_name === 'SCROLL')
-    {
-        // no additional data properties necessary
-    }
 
     if(sendMsg){
         p_BG_interaction.postMessage(msg_obj);
     }
 
+    console.log(msg_obj.yasbil_ev_data);
     console.log('CS:', e_name, new Date().getTime());
 }
 
 
 
+// -------------- SCROLL -----------------------
+// using WHEEL or using SCROLL?
+// other keyboard events?
+/*window.addEventListener('scroll', function (e)
+{
+    const msg_obj = {
+        yasbil_msg: "DB_LOG_SCROLL",
+        yasbil_ev_data: {
+            e_name: 'SCROLL',
+            e_ts: new Date().getTime(),
+
+            //getting viewport properties (using ES6 spread notation)
+            // https://stackoverflow.com/a/36044262
+            ...get_viewport_properties(),
+
+
+        }
+    };
+
+    p_BG_interaction.postMessage(msg_obj);
+    console.log(msg_obj.yasbil_ev_data);
+    console.log('CS:', 'SCROLL', new Date().getTime());
+
+});*/
+
+
+
+
+
+
+
+// ---------------------------------- utility functions ------------------------------------
+function get_viewport_properties(){
+    return {
+        // viewport properties
+        zoom: window.devicePixelRatio,
+        page_w: document.documentElement.scrollWidth, //page width
+        page_h: document.documentElement.scrollHeight, //page height
+        page_x: window.pageXOffset, //page horizontally scrolled
+        page_y: window.pageYOffset, //page vertically scrolled
+        viewport_w: document.documentElement.clientWidth, //viewport width
+        viewport_h: document.documentElement.clientHeight, //viewport height
+        browser_w: window.outerWidth, //browser window width
+        browser_h: window.outerHeight, //browser window height
+    }
+}
 
