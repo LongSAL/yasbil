@@ -69,7 +69,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`pv_guid`| PK in client|
 |`session_guid`||
 |`win_id`||
-|`win_guid`||
+|`win_guid`|unique ID for the browser window in which pagevisit occurs|
 |`tab_id`||
 |`tab_guid`|unique ID for the browser tab in which pagevisit occurs|
 |`tab_width`||
@@ -104,22 +104,27 @@ interaction with YASBIL (both browser extension and WordPress plugin).
  
 | **Column** | **Description** |
 | ----------- | ----------- |
+|`m_event`|Mouse event type: `MOUSE_HOVER`, `MOUSE_CLICK`,  `MOUSE_RCLICK`, `MOUSE_DBLCLICK`|
 |`m_id`|server only; PK in server|
 |`m_guid`|PK in client|
 |`session_guid`||
-|`url`||
+|`win_id`||
+|`win_guid`|unique ID for the browser window in which mouse activity occurs|
+|`tab_id`||
+|`tab_guid`|unique ID for the browser tab in which mouse activity occurs|
+|`m_url`|url of the page|
 |`m_ts`|timestamp of mouse activity|
-|`m_event`|Javascript mouse event type: `click`, `dblclick`,  `contextmenu`, `scroll` (others?)|
-|`loc_x`||
-|`loc_y`||
+|`mouse_x`||
+|`mouse_y`||
 |--------------|--------------|
-|`zoom_level`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
-|`browser_width`| `window.outerWidth` width of entire browser window; changes with zoom level|
-|`browser_height`| `window.outerHeight` height of entire browser window;  changes with zoom level|
+|`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
+|`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
+|`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
+|`browser_h`| `window.outerHeight` height of entire browser window;  changes with zoom level|
 |`viewport_width`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
 |`viewport_height`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
-|`page_width`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
-|`page_height`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|`hover_dur`|duration of hover (if `MOUSE_HOVER` event) in milliseconds|
 |--------------|--------------|
 |.|capture text / context around click / hover etc|
 | `sync_ts`| only in client; 0 = not synced|

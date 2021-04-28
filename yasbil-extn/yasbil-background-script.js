@@ -399,9 +399,7 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
         mouse_y: yasbil_ev_data.mouse_y,
         hover_dur: yasbil_ev_data.hover_dur,
 
-
         sync_ts: 0,
-
 
         // tab_width: tabInfo.width,
         // tab_height: tabInfo.height ,
