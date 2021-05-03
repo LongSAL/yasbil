@@ -49,6 +49,7 @@ db.version(1).stores({
     yasbil_sessions: 'session_guid,sync_ts',
     yasbil_session_pagevisits: 'pv_guid,sync_ts',
     yasbil_session_mouse: 'm_guid,sync_ts',
+    yasbil_session_webnav: 'webnav_guid,sync_ts',
     //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 });
@@ -110,13 +111,20 @@ async function db_log_start()
         await update_sync_data_msg();
 
         //***** add listeneres --> start logging ********
-        // 1. log "normal" page visits
+        // 1a. log "normal" page visits
         browser.webNavigation.onCompleted.addListener(listener_webNav_onCompleted);
+
+        //1b. log other webnav events as timing signal
+        browser.webNavigation.onBeforeNavigate.addListener(listener_webNav_onBefNav);
+        browser.webNavigation.onCommitted.addListener(listener_webNav_onCommit);
+        browser.webNavigation.onDOMContentLoaded.addListener(listener_webNav_onDOMLoad);
+
         // 2. log tab switches
         browser.tabs.onActivated.addListener(listener_tabs_onActivated);
 
-        //3. TODO: log YouTube like page visitss
+        //3. log YouTube like page visitss
         browser.webNavigation.onHistoryStateUpdated.addListener(listener_webNav_onHistUpd);
+
 
         // change icon to logging-on icon
         browser.browserAction.setIcon({
@@ -144,6 +152,11 @@ async function db_log_end()
 {
     //first: remove listeners --> stop logging
     browser.webNavigation.onCompleted.removeListener(listener_webNav_onCompleted);
+
+    browser.webNavigation.onBeforeNavigate.removeListener(listener_webNav_onBefNav);
+    browser.webNavigation.onCommitted.removeListener(listener_webNav_onCommit);
+    browser.webNavigation.onDOMContentLoaded.removeListener(listener_webNav_onDOMLoad);
+
     browser.tabs.onActivated.removeListener(listener_tabs_onActivated);
     browser.webNavigation.onHistoryStateUpdated.removeListener(listener_webNav_onHistUpd);
 
@@ -192,31 +205,81 @@ async function db_log_end()
 
 
 
-//-------------------- log pagevisits method #1 -----------------
+//-------------------- log pagevisits method #1a -----------------
 // Fired when a document, including the resources it refers to, is completely loaded
 // and initialized. This is equivalent to the DOM 'load' event.
 // event details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onCompleted
 // tab details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/Tab
 // history visittem: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/VisitItem
-async function listener_webNav_onCompleted(details)
+function listener_webNav_onCompleted(details)
 {
     // console.log('webNavigation.onCompleted');
-
+    // only for top level frame: main browsing context
     if(details.frameId === 0)
     {
-        await db_log_pagevisits(
+        db_log_pagevisits(
             details.tabId,
             details.timeStamp,
             'webNavigation.onCompleted'
         );
     }
-    else
-    {
-        // TODO: about iframes
-        //  - should we log iframes?
-        //  - if yes, how many much / other criteria? w3schools loads 50+ subframes
-        //  - check url for about:blank?
-    }
+
+    //for all frames
+    db_log_webnav_events(
+        details.tabId,
+        details.frameId,
+
+        'webNavigation.onCompleted',
+        details.timeStamp,
+        details.url,
+        "",
+        "",
+    );
+}
+
+//-------------------- log webnav events -----------------
+function listener_webNav_onBefNav(details)
+{
+    // no need to await
+    db_log_webnav_events(
+        details.tabId,
+        details.frameId,
+        'webNavigation.onBeforeNavigate',
+        details.timeStamp,
+        details.url,
+        "",
+        "",
+    );
+}
+
+//-------------------- log webnav events -----------------
+function listener_webNav_onCommit(details)
+{
+    // no need to await
+    db_log_webnav_events(
+        details.tabId,
+        details.frameId,
+        'webNavigation.onCommitted',
+        details.timeStamp,
+        details.url,
+        details.transitionType.toUpperCase(),
+        details.transitionQualifiers.join('|').toUpperCase(),
+    );
+}
+
+//-------------------- log webnav events -----------------
+function listener_webNav_onDOMLoad(details)
+{
+    // no need to await
+    db_log_webnav_events(
+        details.tabId,
+        details.frameId,
+        'webNavigation.onDOMContentLoaded',
+        details.timeStamp,
+        details.url,
+        "",
+        "",
+    );
 }
 
 
@@ -226,11 +289,11 @@ async function listener_webNav_onCompleted(details)
 // URL may not be set at the time this event fired, but you can listen
 // to tabs.onUpdated events to be notified when a URL is set.
 // event details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated
-async function listener_tabs_onActivated(details)
+function listener_tabs_onActivated(details)
 {
     // console.log('tabs.onActivated');
 
-    await db_log_pagevisits(
+    db_log_pagevisits(
         details.tabId,
         new Date().getTime(), //current timestamp
         'tabs.onActivated',
@@ -243,7 +306,7 @@ async function listener_tabs_onActivated(details)
 
 //-------------------- log YouTube like webpage visits? -----------------
 // event docs: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated
-async function listener_webNav_onHistUpd(details)
+function listener_webNav_onHistUpd(details)
 {
     // console.log('webNavigation.onHistoryStateUpdated');
 
@@ -252,7 +315,7 @@ async function listener_webNav_onHistUpd(details)
     // it is fired once by YouTube
     // it is not fired by many webpages
 
-    await db_log_pagevisits(
+    db_log_pagevisits(
         details.tabId,
         details.timeStamp,
         'webNavigation.onHistoryStateUpdated',
@@ -273,11 +336,11 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
 
     const tabInfo = await browser.tabs.get(tabId);
 
-    const url = new URL(tabInfo.url);
-
     // do no track certain blocked domains (e.g. gmail, about:, etc)
-    if(!is_tracking_allowed(url))
+    if(!is_tracking_allowed(tabInfo.url))
         return;
+
+    const url = new URL(tabInfo.url);
 
     //identify popular search engines and get search query from URL
     const se_info = get_search_engine_info(url);
@@ -367,16 +430,15 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
 
     // console.log(yasbil_ev_data);
 
-
     const data_row = {
-        m_event: yasbil_ev_data.e_name,
         m_guid: uuidv4(),
         session_guid: get_session_guid(),
         win_id: tabInfo.windowId,
         win_guid: get_win_guid(tabInfo.windowId),
-        tab_id: tabId,
-        tab_guid: get_tab_guid(tabId),
+        tab_id: tabInfo.id,
+        tab_guid: get_tab_guid(tabInfo.id),
 
+        m_event: yasbil_ev_data.e_name,
         m_url: p_url || tabInfo.url,
         m_ts: yasbil_ev_data.e_ts,
 
@@ -390,32 +452,17 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
         browser_w: yasbil_ev_data.browser_w,
         browser_h: yasbil_ev_data.browser_h,
 
+        mouse_x: yasbil_ev_data.mouse_x,
+        mouse_y: yasbil_ev_data.mouse_y,
+        hover_dur: yasbil_ev_data.hover_dur,
+
         dom_path: yasbil_ev_data.dom_path,
         target_text: yasbil_ev_data.target_text,
         target_html: yasbil_ev_data.target_html,
         closest_a_text: yasbil_ev_data.closest_a_text,
         closest_a_html: yasbil_ev_data.closest_a_html,
-        mouse_x: yasbil_ev_data.mouse_x,
-        mouse_y: yasbil_ev_data.mouse_y,
-        hover_dur: yasbil_ev_data.hover_dur,
 
         sync_ts: 0,
-
-        // tab_width: tabInfo.width,
-        // tab_height: tabInfo.height ,
-
-        // pv_title: tabInfo.title, // should be fully available
-        // pv_hostname: url.hostname,
-        // pv_rev_hostname: url.hostname.split('').reverse().join(''),
-        // pv_transition_type: transition_typ.toUpperCase(),
-        //
-        // pv_page_text: page_text[0], // taking the first element
-        // pv_page_html: page_html[0],
-        //
-        // hist_ts: hist_visit_time,
-        // hist_visit_ct: hist_visit_count,
-        // pv_srch_engine: se_info.search_engine,
-        // pv_srch_qry: se_info.search_query,
     };
 
     console.log(data_row);
@@ -428,6 +475,55 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
 
 
 
+
+
+
+
+
+
+// -------------------- db_log_webnav_events --------------------
+// captures webnavigation events as timing signals
+async function db_log_webnav_events(
+    p_tab_id,
+    p_frame_id,
+
+    p_webnav_event,
+    p_webnav_ts,
+    p_webnav_url,
+    p_webnav_transition_type,
+    p_webnav_transition_qual,
+)
+{
+    // do no track certain blocked domains (e.g. gmail, about:, etc)
+    if(!is_tracking_allowed(p_webnav_url))
+        return;
+
+    // console.log(yasbil_ev_data);
+
+
+    const data_row = {
+        webnav_guid: uuidv4(),
+        session_guid: get_session_guid(),
+        tab_id: p_tab_id,
+        tab_guid: get_tab_guid(p_tab_id),
+        frame_id: p_frame_id,
+
+        webnav_event: p_webnav_event,
+        webnav_ts: p_webnav_ts,
+        webnav_url: p_webnav_url,
+        webnav_transition_type: p_webnav_transition_type,
+        webnav_transition_qual: p_webnav_transition_qual,
+
+        sync_ts: 0,
+    };
+
+    console.log(data_row);
+
+    await db.yasbil_session_webnav.add(data_row)
+        .catch(function(error) {
+            console.log("WebNav Insert Error: " + error);
+        });
+}
 
 
 

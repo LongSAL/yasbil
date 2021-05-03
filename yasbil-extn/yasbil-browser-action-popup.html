@@ -20,7 +20,7 @@
 </head>
 <body>
 
-<main class="container p-4" style="max-width: 300px">
+<main class="container p-4" style="max-width: 350px">
 
     <!----- header ------->
     <h1 class="mx-auto text-center">YASBIL</h1>
@@ -56,36 +56,43 @@
         </div>
     </div>
 
-
     <hr/>
 
 
     <!------- sync data ------->
     <p id="sync_data_msg" class="text-center"></p>
 
-    <p class="text-center mt-0">
-        <a href="yasbil-options.html" class="link-success" target="_blank">Sync Settings</a>
-    </p>
+    <hr/>
+
+
+    <!---- sync data button ------>
+    <div id="sync_controls" class="mt-0">
+        <p class="text-center">
+            <button id="do_sync" class="btn btn-lg btn-outline-secondary" type="button">Sync Data</button>
+            <!--a href="yasbil-options.html" class="d-block mt-2" target="_blank">Sync Settings</a-->
+        </p>
+    </div>
 
     <hr/>
 
 
-    <!---- sync controls ------>
-    <div id="sync_controls" class="mt-0">
-        <p class="text-center">
-            <button id="do_sync" class="btn btn-outline-secondary" type="button">Sync Data</button>
-            <!--a href="yasbil-options.html" class="d-block mt-2" target="_blank">Sync Settings</a-->
-        </p>
-        <hr/>
-    </div>
+    <!--- links ---->
+    <p class="text-center mt-0">
+        <a href="yasbil-options.html" class="link-success" target="_blank">Sync Settings</a>
+    </p>
 
-
-
-    <p class="text-center mt-3">
-        <a id="yasbil_wpl_url" href="#" class="link-secondary" target="_blank">
-            View Previously Synced Data
+    <p class="text-center mt-1">
+        <a href="yasbil-view-data-client.html" class="link-secondary" target="_blank">
+            View Data in Browser (before sync)
         </a>
     </p>
+
+    <p class="text-center mt-1">
+        <a id="yasbil_wpl_url" href="#" class="link-secondary" target="_blank">
+            View Data in Server (after sync)
+        </a>
+    </p>
+
 
 
 </main>

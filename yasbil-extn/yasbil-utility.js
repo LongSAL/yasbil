@@ -112,10 +112,10 @@ function get_search_engine_info(p_url_obj)
 
 //-------------------- is_tracking_allowed -----------------
 // returns if tracking is allowed, checks agains a "deny"list
-function is_tracking_allowed(p_url_obj)
+function is_tracking_allowed(p_url_str)
 {
     let res = true;
-    const a = p_url_obj;
+    const a = new URL(p_url_str);
 
     if(a.hostname.length < 1)
     {
