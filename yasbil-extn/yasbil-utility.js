@@ -11,6 +11,26 @@
 // localstorage can only store strings
 
 
+//-------------------- Establish Connection with Database -----------------
+    // make sure dexie.js is called first
+let db = new Dexie("yasbil_db");
+
+db.version(1).stores({
+    yasbil_sessions: 'session_guid,sync_ts',
+    yasbil_session_pagevisits: 'pv_guid,sync_ts',
+    yasbil_session_mouse: 'm_guid,sync_ts',
+    yasbil_session_webnav: 'webnav_guid,sync_ts',
+    //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
+    //yasbil_session_framevisits: 'fv_guid',
+});
+
+db.open().then(async function (db) {
+    //await update_sync_data_msg();
+    console.log('Database opened successfully');
+}).catch (function (err) {
+    console.log('DB Open Error occurred');
+    console.log(err);
+});
 
 
 // ---------- synchronous storage / retrieval --------------
@@ -250,7 +270,6 @@ function set_sync_result(p_sync_result) {
 // var 'YASBIL_WP_USER' = "YASBIL_WP_USER";
 // var 'YASBIL_WP_PASS' = "YASBIL_WP_PASS";
 
-
 function yasbil_save_settings(p_url, p_user, p_pass) {
     localStorage.setItem('YASBIL_WP_URL',  p_url.trim());
     localStorage.setItem('YASBIL_WP_USER',  p_user.trim());
@@ -359,6 +378,30 @@ function checkJSON(str) {
     } catch (e) {
         return false
     }
+}
+
+// ------------ display unix timestamp in human readable format -----------
+function yasbil_milli_to_str(ms)
+{
+    if(ms === 0)
+        return "x";
+
+    return new Date(ms)
+        .toISOString()
+        .replace('T', ' ');
+}
+
+
+// -------------- truncate string --------------------
+function yasbil_truncate_str(long_str, thresh = 30)
+{
+    /*
+    if (strlen($long_str) >= $thresh) {
+        return substr($long_str, 0, $thresh-3). "..."; // . substr($long_str, -5);
+    }
+    else {
+        return $long_str;
+    }*/
 }
 
 

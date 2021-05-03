@@ -43,29 +43,7 @@ const TABLES_TO_SYNC = [{
 
 
 //-------------------- Establish Connection with Database -----------------
-let db = new Dexie("yasbil_db");
-
-db.version(1).stores({
-    yasbil_sessions: 'session_guid,sync_ts',
-    yasbil_session_pagevisits: 'pv_guid,sync_ts',
-    yasbil_session_mouse: 'm_guid,sync_ts',
-    yasbil_session_webnav: 'webnav_guid,sync_ts',
-    //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
-    //yasbil_session_framevisits: 'fv_guid',
-});
-
-db.open().then(async function (db) {
-    await update_sync_data_msg();
-    console.log('Database opened successfully');
-}).catch (function (err) {
-    console.log('DB Open Error occurred');
-    console.log(err);
-});
-
-
-// db.open() needed?
-// By default, db.open() will be called automatically
-// on first query to the db.
+// in utility.js
 
 
 
