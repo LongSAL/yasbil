@@ -35,12 +35,14 @@
 const p_BG_interaction = browser.runtime.connect({name:"port-ba-popup-to-bg"});
 // NOTE: (Huang+, CHI'11)'s method not working
 //log mouse move after x milliseconds
-const MOUSE_LOG_THRESH = 1000;
+const MOVE_LOG_THRESH = 1000;
 let prev_move_log_ts = new Date().getTime();
 //let prev_mouse_x = -1, prev_mouse_y = -1;
 
 // log hover events only if greater than x milliseconds
-const HOVER_DUR_THRESH = 500;
+const HOVER_DUR_THRESH = 50; // as low a number, more like mousemove; original: 500 1`0;
+// let prev_hover_log_ts = new Date().getTime();
+// const HOVER_LOG_THRESH = 1000;
 
 
 
@@ -50,7 +52,13 @@ const HOVER_DUR_THRESH = 500;
 // global mousemove
 // TODO: is mousemove necessary? or mousehover enough?
 // document.addEventListener('mousemove', listener_mousemove);
-// function listener_mousemove(e){cs_log_mouse('MOUSE_MOVE', e);}
+// function listener_mousemove(e){
+//     const timenow = new Date().getTime()
+//     if((timenow - prev_move_log_ts) > MOVE_LOG_THRESH){
+//         cs_log_mouse('MOUSE_MOVE', e);
+//         prev_move_log_ts = timenow;
+//     }
+// }
 
 
 // hover duration: mouseneter + mouseleave
@@ -91,8 +99,8 @@ document.addEventListener('dblclick', function(e) {
 function cs_log_mouse(e_name, e, closest_a = null, hover_dur= 0)
 {
     //log mouse move only after THRESH time interval
-    if(e_name === 'MOUSE_MOVE' && (new Date().getTime() - prev_move_log_ts) < MOUSE_LOG_THRESH)
-        return;
+    // if(e_name === 'MOUSE_MOVE' && (new Date().getTime() - prev_move_log_ts) < MOVE_LOG_THRESH)
+    //     return;
 
     let sendMsg = true;
 
@@ -151,7 +159,7 @@ function cs_log_mouse(e_name, e, closest_a = null, hover_dur= 0)
         msg_obj.yasbil_ev_data.mouse_x = e.pageX;
         msg_obj.yasbil_ev_data.mouse_y = e.pageY;
 
-        prev_move_log_ts = msg_obj.yasbil_ev_data.e_ts;
+        //prev_move_log_ts = msg_obj.yasbil_ev_data.e_ts;
         // prev_mouse_x = e.pageX;
         // prev_mouse_y = e.pageY;
 

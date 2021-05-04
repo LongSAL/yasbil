@@ -92,33 +92,6 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 
 
 
-----------
-
-### `yasbil_session_webnav`
-- captures [`webnavigation`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events as timing signals 
- 
-| **Column** | **Description** |
-| ----------- | ----------- |
-|`webnav_id`|server only; PK in server|
-|`webnav_guid`|PK in client|
-|`session_guid`||
-|`tab_id`||
-|`tab_guid`|unique ID for the browser tab in which event occurs|
-|`frame_id`|Frame in which the event occurs. 0 indicates that the event happens in the tab's top-level browsing context, not in a nested `<iframe>`. A positive value indicates that navigation happens in a nested iframe. Frame IDs are unique for a given tab and process |
-|--------------|--------------|
-|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onCompleted`|
-|`webnav_ts`|timestamp of event (ms since epoch)|
-|`webnav_url`|url of page / frame |
-|`webnav_transition_type`|only for `onCommitted` event: [`transitionType`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType): The reason for the navigation|
-|`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
-|--------------|--------------|
-| `sync_ts`| only in client; 0 = not synced|
-
-
-
-
-
-
 ----------------
  
 ### `yasbil_session_mouse`
@@ -169,6 +142,25 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 
 
 
+----------
 
- 
+### `yasbil_session_webnav`
+- captures [`webnavigation`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events as timing signals 
+- only for `frameId` = 0, i.e. a tab's top-level browsing context, not in a nested `<iframe>`
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`webnav_id`|server only; PK in server|
+|`webnav_guid`|PK in client|
+|`session_guid`||
+|`tab_id`||
+|`tab_guid`|unique ID for the browser tab in which event occurs|
+|--------------|--------------|
+|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onCompleted`|
+|`webnav_ts`|timestamp of event (ms since epoch)|
+|`webnav_url`|url of page / frame |
+|`webnav_transition_type`|only for `onCommitted` event: [`transitionType`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType): The reason for the navigation|
+|`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
+|--------------|--------------|
+| `sync_ts`| only in client; 0 = not synced|
 

@@ -24,33 +24,20 @@ set_session_guid("0");
 set_sync_status("OFF");
 
 
-//------------ constants -------------
-const API_NAMESPACE = '/wp-json/yasbil/v1';
-
-const TABLES_TO_SYNC = [{
-    name: 'yasbil_sessions',
-    pk: 'session_guid',
-    api_endpoint: '/sync_sessions',
-    nice_name: 'Sessions data'
-}, {
-    name: 'yasbil_session_pagevisits',
-    pk: 'pv_guid',
-    api_endpoint: '/sync_pagevisits',
-    nice_name: 'Webpage Visits data'
-},
-];
-
-
-
 //-------------------- Establish Connection with Database -----------------
-// in utility.js
+
+// // in utility.js
+// if(db.isOpen()){
+//     console.log('inside dbOpen');
+//     update_sync_data_msg();
+// }
 
 
 
 
 
 //-------------------- Start (YASBIL) Logging Session -----------------
-async function db_log_start()
+async function db_log_start(tabInfo)
 {
     const session_guid = uuidv4();
 
@@ -61,6 +48,8 @@ async function db_log_start()
     // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/getBrowserInfo
     // TODO: get for other browsers?
     const browser_info = await browser.runtime.getBrowserInfo();
+
+    const session_start_ts = new Date().getTime();
 
     const data_row = {
         session_guid: session_guid,
@@ -77,7 +66,7 @@ async function db_log_start()
 
         session_tz_str: Intl.DateTimeFormat().resolvedOptions().timeZone,
         session_tz_offset: new Date().getTimezoneOffset()*-1,
-        session_start_ts: new Date().getTime(), //TODO: check time from internet time server?
+        session_start_ts: session_start_ts, //TODO: check time from internet time server?
         session_end_ts: 0,
         sync_ts: 0,
     };
@@ -85,8 +74,6 @@ async function db_log_start()
     await db.yasbil_sessions.add(data_row).then(async function()
     {
         set_session_guid(session_guid);
-
-        await update_sync_data_msg();
 
         //***** add listeneres --> start logging ********
         // 1a. log "normal" page visits
@@ -100,8 +87,22 @@ async function db_log_start()
         // 2. log tab switches
         browser.tabs.onActivated.addListener(listener_tabs_onActivated);
 
-        //3. log YouTube like page visitss
+        //3. log YouTube like page visits
         browser.webNavigation.onHistoryStateUpdated.addListener(listener_webNav_onHistUpd);
+
+        //4. log all currently open tabs as initial page visit
+        const arr_all_tabs = await browser.tabs.query({});
+        const arr_active_tabs = await browser.tabs.query({currentWindow: true, active: true});
+
+        for(let tab of arr_active_tabs)
+        {
+            db_log_pagevisits(
+                tab.id,
+                session_start_ts, //current timestamp
+                'YASBIL',
+                'YASBIL_SESSION_START',
+            );
+        }
 
 
         // change icon to logging-on icon
@@ -112,6 +113,8 @@ async function db_log_start()
         browser.browserAction.setTitle({
             title : "YASBIL is ON"
         });
+
+        update_sync_data_msg();
 
         console.log('Session Start Insert Success: Woot! Did it');
 
@@ -160,7 +163,7 @@ async function db_log_end()
         // Success - the data is updated!
         set_session_guid("0");
 
-        await update_sync_data_msg();
+        update_sync_data_msg();
 
         browser.browserAction.setIcon({
             path : "icon/yasbil-icon-normal.png"
@@ -200,64 +203,77 @@ function listener_webNav_onCompleted(details)
             details.timeStamp,
             'webNavigation.onCompleted'
         );
+
+        db_log_webnav_events(
+            details.tabId,
+            //details.frameId,
+
+            'webNavigation.onCompleted',
+            details.timeStamp,
+            details.url,
+            "",
+            "",
+        );
     }
 
-    //for all frames
-    db_log_webnav_events(
-        details.tabId,
-        details.frameId,
+    // [No use] for all frames
 
-        'webNavigation.onCompleted',
-        details.timeStamp,
-        details.url,
-        "",
-        "",
-    );
 }
 
 //-------------------- log webnav events -----------------
 function listener_webNav_onBefNav(details)
 {
-    // no need to await
-    db_log_webnav_events(
-        details.tabId,
-        details.frameId,
-        'webNavigation.onBeforeNavigate',
-        details.timeStamp,
-        details.url,
-        "",
-        "",
-    );
+    if(details.frameId === 0)
+    {
+        // no need to await
+        db_log_webnav_events(
+            details.tabId,
+            //details.frameId,
+            'webNavigation.onBeforeNavigate',
+            details.timeStamp,
+            details.url,
+            "",
+            "",
+        );
+    }
+
 }
 
 //-------------------- log webnav events -----------------
 function listener_webNav_onCommit(details)
 {
-    // no need to await
-    db_log_webnav_events(
-        details.tabId,
-        details.frameId,
-        'webNavigation.onCommitted',
-        details.timeStamp,
-        details.url,
-        details.transitionType.toUpperCase(),
-        details.transitionQualifiers.join('|').toUpperCase(),
-    );
+
+    if(details.frameId === 0)
+    {
+        // no need to await
+        db_log_webnav_events(
+            details.tabId,
+            //details.frameId,
+            'webNavigation.onCommitted',
+            details.timeStamp,
+            details.url,
+            details.transitionType.toUpperCase(),
+            details.transitionQualifiers.join('|').toUpperCase(),
+        );
+    }
 }
 
 //-------------------- log webnav events -----------------
 function listener_webNav_onDOMLoad(details)
 {
-    // no need to await
-    db_log_webnav_events(
-        details.tabId,
-        details.frameId,
-        'webNavigation.onDOMContentLoaded',
-        details.timeStamp,
-        details.url,
-        "",
-        "",
-    );
+    if(details.frameId === 0)
+    {
+        // no need to await
+        db_log_webnav_events(
+            details.tabId,
+            //details.frameId,
+            'webNavigation.onDOMContentLoaded',
+            details.timeStamp,
+            details.url,
+            "",
+            "",
+        );
+    }
 }
 
 
@@ -275,7 +291,7 @@ function listener_tabs_onActivated(details)
         details.tabId,
         new Date().getTime(), //current timestamp
         'tabs.onActivated',
-        true
+        'YASBIL_TAB_SWITCH',
     );
 }
 
@@ -308,10 +324,8 @@ function listener_webNav_onHistUpd(details)
 // single helper function to log pagevisits
 // takes tabId, timestamp of visit, event-name that triggered this,
 // and optionally, if tab-switch
-async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
+async function db_log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 {
-    // TODO: get CURRENT tab info from where extension is switched on
-
     const tabInfo = await browser.tabs.get(tabId);
 
     // do no track certain blocked domains (e.g. gmail, about:, etc)
@@ -337,8 +351,8 @@ async function db_log_pagevisits(tabId, ts, e_name, is_tab_switch=false)
         hist_visit_count = arr_hist.length;
     }
 
-    if(is_tab_switch)
-        transition_typ = "YASBIL_TAB_SWITCH";
+    if(p_tran_typ)
+        transition_typ = p_tran_typ;
 
     // get page text and HTML
     // executeScript() returns array of objects = result of the script in every injected frame
@@ -463,7 +477,7 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
 // captures webnavigation events as timing signals
 async function db_log_webnav_events(
     p_tab_id,
-    p_frame_id,
+    //p_frame_id,
 
     p_webnav_event,
     p_webnav_ts,
@@ -484,7 +498,7 @@ async function db_log_webnav_events(
         session_guid: get_session_guid(),
         tab_id: p_tab_id,
         tab_guid: get_tab_guid(p_tab_id),
-        frame_id: p_frame_id,
+        //frame_id: p_frame_id,
 
         webnav_event: p_webnav_event,
         webnav_ts: p_webnav_ts,
@@ -513,59 +527,6 @@ async function db_log_webnav_events(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//-------------------- update_sync_data_msg -----------------
-async function update_sync_data_msg()
-{
-    let n_sess = await db.yasbil_sessions
-        .where('sync_ts').equals(0)
-        .count();
-
-    let n_pv = await db.yasbil_session_pagevisits
-        .where('sync_ts').equals(0)
-        .count();
-
-    let n_tot = n_sess + n_pv;
-
-    set_sync_rows_tot(n_tot);
-
-    let sync_msg = //"<i>No data available to sync.</i>" +
-        "<i> Turn on logging and browse the internet to record data.</i>";
-
-    if(n_tot > 0)
-    {
-        let row_counts_html =
-            "<p class='text-end' style='width: 80%'>" +
-            "Sessions: <b>" + n_sess + "</b> rows <br/>" +
-            "Webpage Visits: <b>" + n_pv + "</b> rows <br/>" +
-            "---------------------------<br/>" +
-            "Total: <b>" + n_tot + "</b> rows <br/>" +
-            "---------------------------" +
-            "</p>";
-
-        if(get_sync_status() === "OFF")
-            sync_msg = `Data available to sync:<br/><br/>${row_counts_html}`;
-        else
-            sync_msg = `Data being to synced:<br/><br/>${row_counts_html}`;
-
-    }
-
-    set_sync_data_msg(sync_msg);
-}
 
 
 
@@ -629,7 +590,7 @@ async function do_sync_job()
         // ---------- if all ends well ----------
         set_sync_result('SUCCESS');
         set_sync_progress_msg(`All data synced successfully.`);
-        await update_sync_data_msg();
+        update_sync_data_msg();
     }
     catch (err)
     {
@@ -798,8 +759,8 @@ function listener_runtime_onConnect(p)
     p.onMessage.addListener(async function(m, sendingPort)
     {
         const yasbil_msg = m.yasbil_msg;
-        console.log(`YASBIL_MSG = ${yasbil_msg}`);
-        console.log(m);
+        // console.log(`YASBIL_MSG = ${yasbil_msg}`);
+        // console.log(m);
 
         const is_logging = (get_session_guid() !== "0") ;
         const is_syncing = (get_sync_status() === "ON");
@@ -808,7 +769,7 @@ function listener_runtime_onConnect(p)
         if(!is_logging && !is_syncing)
         {
             if(yasbil_msg === "LOG_START") {
-                await db_log_start();
+                await db_log_start(sendingPort.sender.tab);
             }
             else if(yasbil_msg === "DO_SYNC") {
                 do_sync_job();
@@ -867,9 +828,30 @@ async function __reset_sync_ts()
         console.log(`Resetting ${tbl.name}; Num rows = ${n_rows}`);
     }
 
-    await update_sync_data_msg();
+    update_sync_data_msg();
 }
 
+
+// -------------------- __del_synced_data --------------------
+// deletes data synced over
+async function __del_synced_data()
+{
+    const oneWeekAgo = Date.now() - DEL_THRESH;
+
+    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
+    {
+        let tbl = TABLES_TO_SYNC[i];
+
+        const n_rows = await db.table(tbl.name)
+            .where('sync_ts')
+            // synct_ts = 0 are rows that haven't been synced
+            // 100 is safe choice
+            .between(100, oneWeekAgo)
+            .delete();
+
+        console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
+    }
+}
 
 
 

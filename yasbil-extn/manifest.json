@@ -6,7 +6,11 @@
   "version": "1.0.0",
 
   "background": {
-    "scripts": ["dexie-3.0.3.js", "yasbil-utility.js", "yasbil-background-script.js"]
+    "scripts": [
+      "dexie-3.0.3.js",
+      "yasbil-utility.js",
+      "yasbil-background-script.js"
+    ]
   },
 
   "content_scripts": [

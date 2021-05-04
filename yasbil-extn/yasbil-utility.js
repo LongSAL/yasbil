@@ -5,14 +5,7 @@
  * Time: 09:41 AM CDT
  */
 
-
-//--> has to be localStorage; since content script cannot access these vars
-// let _SESSION_GUID;
-// localstorage can only store strings
-
-
 //-------------------- Establish Connection with Database -----------------
-    // make sure dexie.js is called first
 let db = new Dexie("yasbil_db");
 
 db.version(1).stores({
@@ -25,12 +18,45 @@ db.version(1).stores({
 });
 
 db.open().then(async function (db) {
-    //await update_sync_data_msg();
+    await update_sync_data_msg();
     console.log('Database opened successfully');
 }).catch (function (err) {
     console.log('DB Open Error occurred');
     console.log(err);
 });
+
+//------------ sync constants -------------
+const API_NAMESPACE = '/wp-json/yasbil/v1';
+const DEL_THRESH = 7 * 24 * 60 * 60 * 1000 ; // 7 days in milliseonds
+
+const TABLES_TO_SYNC = [{
+    name: 'yasbil_sessions',
+    pk: 'session_guid',
+    api_endpoint: '/sync_sessions',
+    nice_name: 'Sessions'
+}, {
+    name: 'yasbil_session_pagevisits',
+    pk: 'pv_guid',
+    api_endpoint: '/sync_pagevisits',
+    nice_name: 'Page Visits'
+}, {
+    name: 'yasbil_session_mouse',
+    pk: 'm_guid',
+    api_endpoint: '/sync_mouse',
+    nice_name: 'Mouse Events'
+}, {
+    name: 'yasbil_session_webnav',
+    pk: 'webnav_guid',
+    api_endpoint: '/sync_webnav',
+    nice_name: 'Web Events'
+}
+];
+
+
+
+//--> has to be localStorage; since content script cannot access these vars
+// let _SESSION_GUID;
+// localstorage can only store strings
 
 
 // ---------- synchronous storage / retrieval --------------
@@ -131,7 +157,7 @@ function get_search_engine_info(p_url_obj)
 
 
 //-------------------- is_tracking_allowed -----------------
-// returns if tracking is allowed, checks agains a "deny"list
+// returns if tracking is allowed, checks against a blocklist
 function is_tracking_allowed(p_url_str)
 {
     let res = true;
@@ -144,11 +170,14 @@ function is_tracking_allowed(p_url_str)
     else
     {
         // list of hostname patterns to not track
-        const arr_deny_list = [
+        const arr_blocklist = [
             'about:',
-            'chrome:',
+            'moz-extension:', //firefox extension pages
+            'chrome:', //chrome pages
             'mail.', //hopefully captures all email websites?
+            'accounts.google',
             'outlook.', //outlook Mail
+
 
             // 'docs.google.', //G-suite documents
             // 'drive.google.', //google
@@ -156,11 +185,12 @@ function is_tracking_allowed(p_url_str)
             //TODO: others
         ];
 
-        for(let deny_domain of arr_deny_list)
+        for(let d of arr_blocklist)
         {
-            if(a.hostname.startsWith(deny_domain))
+            if(a.hostname.startsWith(d) || a.protocol.startsWith(d))
             {
                 res = false;
+                console.log(`NO TRACKING: ${a.href}`);
                 break;
             }
         }
@@ -353,6 +383,54 @@ async function yasbil_verify_settings()
     return check_result;
 
 }
+
+
+
+//-------------------- update_sync_data_msg -----------------
+async function update_sync_data_msg()
+{
+
+    //const obj_counts = {};
+    let n_tot = 0;
+    let sync_msg = //`<i>No data available to sync.</i>` +
+        `<i> Turn on logging and browse the internet to record data.</i>`;
+    let row_counts_html = "<p class='text-end' style='width: 80%'>";
+
+    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
+    {
+        const tbl = TABLES_TO_SYNC[i];
+
+        const row_count = await db.table(tbl.name)
+            .where('sync_ts').equals(0)
+            .count();
+
+        // console.log('sync_data_msg', tbl.name, row_count);
+
+        n_tot += row_count;
+
+        row_counts_html = row_counts_html +
+            `${tbl.nice_name}: <b>${row_count}</b> rows <br/>`;
+    }
+
+    row_counts_html = row_counts_html +
+        "---------------------------<br/>" +
+        "Total: <b>" + n_tot + "</b> rows <br/>" +
+        "---------------------------" +
+        "</p>";
+
+    set_sync_rows_tot(n_tot);
+
+    if(n_tot > 0)
+    {
+        if(get_sync_status() === "OFF")
+            sync_msg = `Data ready to sync:<br/><br/>${row_counts_html}`;
+        else
+            sync_msg = `Data being to synced:<br/><br/>${row_counts_html}`;
+    }
+
+    set_sync_data_msg(sync_msg);
+}
+
 
 
 
