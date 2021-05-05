@@ -26,10 +26,12 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 
 | **Column** | **Description** |
 | ----------- | ----------- |
-| `session_id` | server only; PK in server |
+| `session_id` | server only; PK; auto-increment |
 | `session_guid` | PK in client |
-|`project_id`  | server only; from usermeta? |
-|`user_id`  | server only |
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | WordPress User Name; use as codename of participant |
 |`platform_os`| `platform_info.os`|
 |`platform_arch`| `platform_info.arch`|
 |`platform_nacl_arch`| `platform_info.nacl_arch` native client architecture)|
@@ -57,17 +59,24 @@ interaction with YASBIL (both browser extension and WordPress plugin).
         - captures tab switches: user switches back to a webpage-tab previously opened
     - [webNavigation.onHistoryStateUpdated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated)
         - to capture webpages like YouTube which do not fire `webNavigation.onCompleted events`
-        - Note: this event is fired _(i)_ often twice by Google SERPs, _(ii)_ once by YouTube, _(iii)_ probably never by most webpages 
+        - Note: this event may be fired multipe times before page has completely loaded 
 
 - [`innerText`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText) and [`innerHTML`](https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML) to capture page content, and see if text on page come up in future search query terms
     - YouTube fires `onHistoryStateUpdated` **before** the page has completely loaded; so these properties may contain stale values from previous page  
+    
+- the `project` and `user` columns are repeated to avoid excessive table joins; since all data is read-only, we don;t expect issues that typically arise due to non-normalized databases
  
 | **Column** | **Description** |
 | ----------- | ----------- |
-|`pv_id`|server only; PK in server|
-|`pv_event`| event that fired the pagevisit |
+|`pv_id`|server only; PK; auto-increment|
 |`pv_guid`| PK in client|
 |`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
 |`win_id`||
 |`win_guid`|unique ID for the browser window in which pagevisit occurs|
 |`tab_id`||
@@ -76,6 +85,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`tab_height`||
 |--------------|--------------|
 |`pv_ts`|timestamp of webpage visit|
+|`pv_event`| event that fired the pagevisit |
 |`pv_url`||
 |`pv_title`||
 |`pv_hostname`||
@@ -91,6 +101,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 
 
 
+TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 ----------------
  
@@ -99,28 +110,34 @@ interaction with YASBIL (both browser extension and WordPress plugin).
  
 | **Column** | **Description** |
 | ----------- | ----------- |
-|`m_id`|server only; PK in server|
+|`m_id`|server only; PK; auto-increment|
 |`m_guid`|PK in client|
 |`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
 |`win_id`||
 |`win_guid`|unique ID for the browser window in which mouse activity occurs|
 |`tab_id`||
 |`tab_guid`|unique ID for the browser tab in which mouse activity occurs|
 |--------------|--------------|
+|`m_ts`|timestamp of mouse activity|
 |`m_event`|Mouse event type: `MOUSE_HOVER`, `MOUSE_CLICK`,  `MOUSE_RCLICK`, `MOUSE_DBLCLICK`|
 |`m_url`|url of the page|
-|`m_ts`|timestamp of mouse activity|
 |--------------|--------------|
 |`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
 |`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
 |`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
-|`page_x`| `window.pageXOffset` page horizontally scrolled|
-|`page_y`| `window.pageYOffset` page vertically scrolled|
 |`viewport_w`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
 |`viewport_h`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
 |`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
 |`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
 |--------------|--------------|
+|`page_scrolled_x`| `window.pageXOffset` page horizontally scrolled|
+|`page_scrolled_y`| `window.pageYOffset` page vertically scrolled|
 |`mouse_x`| `MouseEvent.pageX` X (horizontal) coordinate (in pixels) at which the mouse was clicked, relative to the left edge of the entire document. This includes any portion of the document not currently visible|
 |`mouse_y`| `MouseEvent.pageY` Y (vertical) coordinate in pixels of the event relative to the whole document. This property takes into account any vertical scrolling of the page|
 |`hover_dur`|duration of hover (if `MOUSE_HOVER` event) in milliseconds|
@@ -131,7 +148,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`closest_a_text`|rendered text of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
 |`closest_a_html`|`innerHTML` of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
 |--------------|--------------|
-| `sync_ts`| only in client; 0 = not synced|
+|`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
 
 
@@ -150,17 +167,23 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 
 | **Column** | **Description** |
 | ----------- | ----------- |
-|`webnav_id`|server only; PK in server|
+|`webnav_id`|server only; PK; auto-increment|
 |`webnav_guid`|PK in client|
 |`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
 |`tab_id`||
 |`tab_guid`|unique ID for the browser tab in which event occurs|
 |--------------|--------------|
-|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onCompleted`|
 |`webnav_ts`|timestamp of event (ms since epoch)|
+|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onCompleted`|
 |`webnav_url`|url of page / frame |
 |`webnav_transition_type`|only for `onCommitted` event: [`transitionType`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType): The reason for the navigation|
 |`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
 |--------------|--------------|
-| `sync_ts`| only in client; 0 = not synced|
+|`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 

@@ -69,9 +69,13 @@ $(document).ready(function()
             },
 
 
-            {
+            {//sync_ts
                 data: null, render: function (data, type, row) {
-                    return yasbil_milli_to_str(row['sync_ts'])
+                    return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
                 }
             },
         ]
@@ -146,9 +150,13 @@ $(document).ready(function()
                 }
             },
 
-            {//synced
+            {//sync_ts
                 data: null, render: function (data, type, row) {
-                    return yasbil_milli_to_str(row['sync_ts'])
+                    return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
                 }
             },
         ]
@@ -253,9 +261,13 @@ $(document).ready(function()
                     }
                 },
 
-                {
+                {//sync_ts
                     data: null, render: function (data, type, row) {
-                        return yasbil_milli_to_str(row['sync_ts'])
+                        return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
                     }
                 },
             ]
@@ -330,9 +342,13 @@ $(document).ready(function()
                 },
 
 
-                {//sync ts
+                {//sync_ts
                     data: null, render: function (data, type, row) {
-                        return yasbil_milli_to_str(row['sync_ts'])
+                        return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
                     }
                 },
             ]

@@ -226,8 +226,8 @@ function get_viewport_properties(){
         zoom: window.devicePixelRatio,
         page_w: document.documentElement.scrollWidth, //page width
         page_h: document.documentElement.scrollHeight, //page height
-        page_x: window.pageXOffset, //page horizontally scrolled
-        page_y: window.pageYOffset, //page vertically scrolled
+        page_scrolled_x: window.pageXOffset, //page horizontally scrolled
+        page_scrolled_y: window.pageYOffset, //page vertically scrolled
         viewport_w: document.documentElement.clientWidth, //viewport width
         viewport_h: document.documentElement.clientHeight, //viewport height
         browser_w: window.outerWidth, //browser window width

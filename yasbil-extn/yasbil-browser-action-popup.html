@@ -13,6 +13,8 @@
 
     <link rel="stylesheet" href="css/bootstrap.v5.0.0-beta1.css">
     <link rel="stylesheet" href="yasbil-browser-action-popup.css">
+    <!-- include dexie before utility to avoid syntax error -->
+    <script src="dexie-3.0.3.js"></script>
     <script src="yasbil-utility.js"></script>
     <script src="js/jquery-3.5.1.js"></script>
     <script src="js/bootstrap.bundle.v5.0.0-beta1.js"></script>
@@ -71,9 +73,11 @@
             <button id="do_sync" class="btn btn-lg btn-outline-secondary" type="button">Sync Data</button>
             <!--a href="yasbil-options.html" class="d-block mt-2" target="_blank">Sync Settings</a-->
         </p>
+
+        <hr/> <!-- this hr needs to be inside div#sync_controls for hiding display -->
     </div>
 
-    <hr/>
+
 
 
     <!--- links ---->

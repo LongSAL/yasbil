@@ -62,9 +62,15 @@ class YASBIL_WP_Admin {
      */
     public function yasbil_register_api_endpoints()
     {
-        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v1/sync_sessions
+        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/sync_table
 
-        register_rest_route('yasbil/v1', 'sync_sessions', [
+        register_rest_route('yasbil/v2_0_0', 'sync_table', [
+            'methods'             => WP_REST_Server::CREATABLE, //POST
+            'callback'            => array($this, 'yasbil_sync_table'),
+            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
+        ]);
+
+        /*register_rest_route('yasbil/v1', 'sync_sessions', [
             // By using this constant we ensure that when the WP_REST_Server
             // changes our readable endpoints will work as intended.
             'methods'             => WP_REST_Server::CREATABLE, //POST
@@ -74,15 +80,15 @@ class YASBIL_WP_Admin {
             // Here we register our permissions callback. The callback is fired
             // before the main callback to check if the current user can access the endpoint.
             'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
-        ]);
+        ]);*/
 
         //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v1/sync_pagevisits
 
-        register_rest_route('yasbil/v1', 'sync_pagevisits', [
+        /*register_rest_route('yasbil/v1', 'sync_pagevisits', [
             'methods'             => WP_REST_Server::CREATABLE, //POST
             'callback'            => array($this, 'yasbil_sync_pagevisits_table'),
             'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
-        ]);
+        ]);*/
 
         // multiple endpoints can be registered in one function..
 //        register_rest_route('yasbil/v1', 'posts', [
@@ -424,16 +430,16 @@ class YASBIL_WP_Admin {
         $user_codename = $user_data->user_login;
 
 ?>
-        <link rel="stylesheet" type="text/css" href="./css/jquery.dataTables.min.css">
-        <script type="text/javascript" charset="utf8" src="./js/jquery.dataTables.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
         <!-- datatables  buttons-->
-        <script type="text/javascript" charset="utf8" src="./js/dataTables.buttons.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
         <!-- export -->
-        <script type="text/javascript" charset="utf8" src="./js/jszip.min.js"></script>
-        <script type="text/javascript" charset="utf8" src="./js/pdfmake.min.js"></script>
-        <script type="text/javascript" charset="utf8" src="./js/vfs_fonts.js"></script>
-        <script type="text/javascript" charset="utf8" src="./js/buttons.html5.min.js"></script>
-        <script type="text/javascript" charset="utf8" src="./js/buttons.print.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.html5.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.print.min.js"></script>
 
         <div class="wrap">
 
@@ -477,68 +483,6 @@ class YASBIL_WP_Admin {
 ?>
 
             <p>All timestamps are in UTC.</p>
-
-            <!-- explanation of transition type and qualifiers --->
-            <!--table>
-                <thead>
-                    <tr>
-                        <th>
-                            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType">
-                                Transition Type (MDN)
-                            </a>
-                        </th>
-                        <th>
-                            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier">
-                                Transition Qualifier (MDN)
-                            </a>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <dl>
-                                <dt><a id="value-link"></a>"link"</dt>
-                                <dd>The user clicked a link in another page.</dd>
-                                <dt><a id="value-typed"></a>"typed"</dt>
-                                <dd>The user typed the URL into the address bar. This is also used if the user started typing into the address bar, then selected a URL from the suggestions it offered. See also "generated".</dd>
-                                <dt><a id="value-auto_bookmark"></a>"auto_bookmark"</dt>
-                                <dd>The user clicked a bookmark or an item in the browser history.</dd>
-                                <dt><a id="value-auto_subframe"></a>"auto_subframe"</dt>
-                                <dd>Any nested iframes that are automatically loaded by their parent.</dd>
-                                <dt><a id="value-manual_subframe"></a>"manual_subframe"</dt>
-                                <dd>Any nested iframes that are loaded as an explicit user action. Loading such an iframe will generate an entry in the back/forward navigation list.</dd>
-                                <dt><a id="value-generated"></a>"generated"</dt>
-                                <dd>The user started typing in the address bar, then clicked on a suggested entry that didn't contain a URL.</dd>
-                                <dt><a id="value-start_page"></a>"start_page"</dt>
-                                <dd>The page was passed to the command line or is the start page.</dd>
-                                <dt><a id="value-form_submit"></a>"form_submit"</dt>
-                                <dd>The user submitted a form. Note that in some situations, such as when a form uses a script to submit its contents, submitting a form does not result in this transition type.</dd>
-                                <dt><a id="value-reload"></a>"reload"</dt>
-                                <dd>The user reloaded the page, using the Reload button or by pressing Enter in the address bar. This is also used for session restore and reopening closed tabs.</dd>
-                                <dt><a id="value-keyword"></a>"keyword"</dt>
-                                <dd>The URL was generated using a <a target="_blank" href="https://support.mozilla.org/en-US/kb/how-search-from-address-bar" class="external" rel=" noopener">keyword search</a> configured by the user.</dd>
-                                <dt><a id="value-keyword_generated"></a>"keyword_generated"</dt>
-                                <dd>Corresponds to a visit generated for a keyword.</dd>
-                            </dl>
-                        </td>
-
-                        <td>
-                            <dl>
-                                <dt>"client_redirect"</dt>
-                                <dd>Redirect(s) caused by JavaScript running in the page or a "refresh" pragma in the page's <a href="/en-US/docs/Web/HTML/Element/meta">meta</a> tag.</dd>
-                                <dt>"server_redirect"</dt>
-                                <dd>Redirect(s) caused by a <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection" class="external" rel=" noopener">3XX HTTP status code</a> sent from the server.</dd>
-                                <dt>"forward_back"</dt>
-                                <dd>The user used the forward or back button to trigger the navigation.</dd>
-                                <dt>"from_address_bar"</dt>
-                                <dd>The user triggered the navigation from the address bar.</dd>
-                            </dl>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            -->
 <?php
         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
 
@@ -916,6 +860,176 @@ class YASBIL_WP_Admin {
 
 
 
+// ------ single function to sync all tables -----------------------
+public function yasbil_sync_table( $request )
+{
+    /***
+    JSON body format:
+    {
+    'table_name': 'yasbil_session_webnav',
+    'client_pk_col': 'webnav_guid',
+    'num_rows': 23, (not required)
+    'data_rows': [ {row 1 obj}, {row 2 obj}, ... {row n obj}, ]
+    }
+     */
+
+    try
+    {
+        //TODO: check authentication (whether participant is active)
+
+        global $wpdb;
+
+        $json_body = $request->get_json_params();
+
+        $current_user = wp_get_current_user();
+        $wp_userid = $current_user->ID;
+        $wp_username = $current_user->user_login;
+
+        // sanitize_key(): Keys are used as internal identifiers. Lowercase
+        // alphanumeric characters, dashes, and underscores are allowed.
+        $tbl_name = $wpdb->prefix . sanitize_text_field($json_body['table_name']);
+        $client_pk_col = sanitize_text_field($json_body['client_pk_col']);
+
+        $project_detail = $this->yasbil_get_project_for_user($wp_userid);
+        $project_id = $project_detail[0];
+        $project_name = $project_detail[1];
+
+        $sync_ts = $this->yasbil_get_millitime();
+        $data_rows = $json_body['data_rows'];
+
+        // auto increment columns; need not be inserted
+        $arr_auto_cols = [
+            "session_id",
+            "pv_id",
+            "m_id",
+            "webnav_id",
+        ];
+
+        // comma separated list of all columns
+        $arr_col_names = $wpdb->get_col("DESC {$tbl_name}", 0);
+        $sql_col_csv = ""; //implode( ', ', $arr_col_names );
+        $sql_placeholder_csv = "";
+
+        // loop over columns
+        foreach ( $arr_col_names as $col_name )
+        {
+            if(!in_array($col_name, $arr_auto_cols))
+            {
+                $sql_col_csv .= "$col_name,";
+                $sql_placeholder_csv .= "%s,";
+            }
+        }
+
+        //remove last comma(s)
+        $sql_col_csv = rtrim($sql_col_csv, ', ');
+        $sql_placeholder_csv = rtrim($sql_placeholder_csv, ', ');
+
+        // sql insert statement
+        $sql_insert = "INSERT INTO $tbl_name ($sql_col_csv) VALUES";
+
+        $values = array();
+        $place_holders = array();
+
+        foreach ( $data_rows as $row )
+        {
+            // loop over columns
+            foreach ( $arr_col_names as $col_name )
+            {
+                if(!in_array($col_name, $arr_auto_cols))
+                {
+                    switch ($col_name)
+                    {
+                        case "project_id":
+                            $values[] = $project_id;
+                            break;
+                        case "project_name":
+                            $values[] = $project_name;
+                            break;
+                        case "user_id":
+                            $values[] = $wp_userid;
+                            break;
+                        case "user_name":
+                            $values[] = $wp_username;
+                            break;
+                        case "sync_ts":
+                            $values[] = $sync_ts;
+                            break;
+                        default:
+                            //options for sanitizing
+                            // sanitize_text_field
+                            // sanitize_textarea_field
+                            // mysqli_real_escape_string
+                            // htmlentities
+                            /*function test_input($data) {
+                                $data = trim($data);
+                                $data = stripslashes($data);
+                                $data = htmlspecialchars($data);
+                                return $data;
+                            }*/
+                            // using "prepare" so perhaps not required
+                            $values[] = $row[$col_name];
+                            break;
+                    }
+                }
+            } // end: loop over cols
+            $place_holders[] = "($sql_placeholder_csv)";
+        } //end: loop over data rows
+
+        $sql_insert .= implode( ', ', $place_holders );
+        if( false === $wpdb->query( $wpdb->prepare( "$sql_insert ", $values ) ))
+        {
+            return new WP_Error('db_query_error', $wpdb->last_error, array('status' => 400));
+        }
+
+        $arr_synced_rows = $wpdb->get_results( $wpdb->prepare("
+                SELECT $client_pk_col 
+                FROM $tbl_name 
+                WHERE sync_ts = %s",
+            $sync_ts
+        ), ARRAY_A);
+
+        $arr_synced_pks = array();
+
+        foreach ($arr_synced_rows as $row) {
+            $arr_synced_pks[] = $row[$client_pk_col];
+        }
+
+        $return_obj = array();
+        $return_obj['sync_ts'] = $sync_ts;
+        $return_obj['guids'] = $arr_synced_pks;
+
+        $response = new WP_REST_Response( $return_obj );
+        $response->set_status( 201 );
+
+        return $response;
+
+    }
+    catch (Exception $e)
+    {
+        return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //-------------------------- SESSIONS Sync --------------------------------
     public function yasbil_sync_sessions_table( $request )
     {
@@ -1134,7 +1248,7 @@ class YASBIL_WP_Admin {
                     sanitize_text_field($row['pv_transition_qualifier']),
                     sanitize_text_field($row['pv_srch_engine']),
                     sanitize_text_field($row['pv_srch_qry']),
-                    sanitize_text_field($sync_ts)
+                    $sync_ts
                 );
                 $place_holders[] = "(
                     %s, %s, %s, %s, %s, 

@@ -4,6 +4,34 @@
  * Date: 2021-02-02
  * Time: 09:41 AM CDT
  */
+//------------ sync constants -------------
+const REQ_NAMESPACE = 'yasbil/v2_0_0';
+const API_NAMESPACE = `/wp-json/${REQ_NAMESPACE}`;
+const DEL_THRESH = 7 * 24 * 60 * 60 * 1000 ; // 7 days in milliseonds
+
+const TABLES_TO_SYNC = [{
+    name: 'yasbil_sessions',
+    pk: 'session_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Sessions'
+}, {
+    name: 'yasbil_session_pagevisits',
+    pk: 'pv_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Page Visits'
+}, {
+    name: 'yasbil_session_mouse',
+    pk: 'm_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Mouse Events'
+}, {
+    name: 'yasbil_session_webnav',
+    pk: 'webnav_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Web Events'
+}
+];
+
 
 //-------------------- Establish Connection with Database -----------------
 let db = new Dexie("yasbil_db");
@@ -25,32 +53,6 @@ db.open().then(async function (db) {
     console.log(err);
 });
 
-//------------ sync constants -------------
-const API_NAMESPACE = '/wp-json/yasbil/v1';
-const DEL_THRESH = 7 * 24 * 60 * 60 * 1000 ; // 7 days in milliseonds
-
-const TABLES_TO_SYNC = [{
-    name: 'yasbil_sessions',
-    pk: 'session_guid',
-    api_endpoint: '/sync_sessions',
-    nice_name: 'Sessions'
-}, {
-    name: 'yasbil_session_pagevisits',
-    pk: 'pv_guid',
-    api_endpoint: '/sync_pagevisits',
-    nice_name: 'Page Visits'
-}, {
-    name: 'yasbil_session_mouse',
-    pk: 'm_guid',
-    api_endpoint: '/sync_mouse',
-    nice_name: 'Mouse Events'
-}, {
-    name: 'yasbil_session_webnav',
-    pk: 'webnav_guid',
-    api_endpoint: '/sync_webnav',
-    nice_name: 'Web Events'
-}
-];
 
 
 
@@ -331,8 +333,8 @@ async function yasbil_verify_settings()
         redirect: 'follow'
     };
 
-    const req_namespace = 'yasbil/v1';
-    const req_url = settings.URL + '/wp-json/' + req_namespace;
+
+    const req_url = settings.URL + API_NAMESPACE;
 
     // fetch() requires TWO promise resolutions:
     // 1. fetch() makes a network request to the url and returns a promise.
@@ -366,7 +368,7 @@ async function yasbil_verify_settings()
         // whose value is equal to yasbil/v1
         if(!(
             json_resp.hasOwnProperty('namespace')
-            && json_resp.namespace === req_namespace
+            && json_resp.namespace === REQ_NAMESPACE
         )){
             throw new Error('Invalid Server URL.');
         }

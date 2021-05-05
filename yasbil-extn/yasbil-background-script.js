@@ -437,13 +437,13 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
         zoom: yasbil_ev_data.zoom,
         page_w: yasbil_ev_data.page_w,
         page_h: yasbil_ev_data.page_h,
-        page_x: yasbil_ev_data.page_x,
-        page_y: yasbil_ev_data.page_y,
         viewport_w: yasbil_ev_data.viewport_w,
         viewport_h: yasbil_ev_data.viewport_h,
         browser_w: yasbil_ev_data.browser_w,
         browser_h: yasbil_ev_data.browser_h,
 
+        page_scrolled_x: yasbil_ev_data.page_scrolled_x,
+        page_scrolled_y: yasbil_ev_data.page_scrolled_y,
         mouse_x: yasbil_ev_data.mouse_x,
         mouse_y: yasbil_ev_data.mouse_y,
         hover_dur: yasbil_ev_data.hover_dur,
@@ -669,6 +669,8 @@ async function sync_table_data(table_name, pk, api_endpoint)
         myHeaders.append("Content-Type", "application/json");
 
         let body_data = JSON.stringify({
+            table_name: table_name,
+            client_pk_col: pk,
             num_rows: num_rows_sent,
             data_rows: table_data
         });
@@ -680,7 +682,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
             redirect: 'follow'
         };
 
-        let req_url = settings.URL + API_NAMESPACE + api_endpoint;
+        const req_url = settings.URL + API_NAMESPACE + api_endpoint;
 
 
         // --------- STEP 3: making request and parsing response ---------
