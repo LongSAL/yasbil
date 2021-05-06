@@ -109,7 +109,7 @@ class YASBIL_WP_Activator
             KEY project_id (project_id),
             KEY project_name (project_name),
             KEY user_id (user_id),
-	        KEY participant_name (user_name),
+	        KEY user_name (user_name),
             KEY win_guid (win_guid),
             KEY tab_guid (tab_guid),
             KEY pv_event (pv_event),
@@ -157,7 +157,7 @@ class YASBIL_WP_Activator
             KEY project_id (project_id),
             KEY project_name (project_name),
             KEY user_id (user_id),
-	        KEY participant_name (user_name),
+	        KEY user_name (user_name),
             KEY win_guid (win_guid),
             KEY tab_guid (tab_guid),
             KEY m_event (m_event)
@@ -186,7 +186,7 @@ class YASBIL_WP_Activator
             KEY project_id (project_id),
             KEY project_name (project_name),
             KEY user_id (user_id),
-	        KEY participant_name (user_name),
+	        KEY user_name (user_name),
             KEY tab_guid (tab_guid),
             KEY webnav_event (webnav_event),
             KEY webnav_transition_type (webnav_transition_type)

@@ -176,8 +176,9 @@ function is_tracking_allowed(p_url_str)
             'about:',
             'moz-extension:', //firefox extension pages
             'chrome:', //chrome pages
+            'volt.ischool.utexas.edu', //volt webpages
             'mail.', //hopefully captures all email websites?
-            'accounts.google',
+            'accounts.google', // Google accounts
             'outlook.', //outlook Mail
 
 

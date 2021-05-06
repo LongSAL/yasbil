@@ -187,3 +187,9 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
+
+------
+
+## Participant Management
+Participant will be able to sync data to the server if the
+`yasbil_user_status` user meta field is not equal to the string `DISABLED`.
