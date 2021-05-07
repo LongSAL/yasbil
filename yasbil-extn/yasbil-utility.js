@@ -14,6 +14,11 @@ const TABLES_TO_SYNC = [{
     api_endpoint: '/sync_table',
     nice_name: 'Sessions'
 }, {
+    name: 'yasbil_session_pagevisits',
+    pk: 'pv_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Page Visits'
+}, {
     name: 'yasbil_session_mouse',
     pk: 'm_guid',
     api_endpoint: '/sync_table',
@@ -23,11 +28,6 @@ const TABLES_TO_SYNC = [{
     pk: 'webnav_guid',
     api_endpoint: '/sync_table',
     nice_name: 'Web Events'
-}, {
-    name: 'yasbil_session_pagevisits',
-    pk: 'pv_guid',
-    api_endpoint: '/sync_table',
-    nice_name: 'Page Visits'
 },
 ];
 

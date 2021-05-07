@@ -649,7 +649,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
     try
     {
         // --------- STEP 1: SELECTing table data ---------
-        const table_data = await db.table(table_name)
+        let table_data = await db.table(table_name)
             .where('sync_ts').equals(0)
             .toArray();
 
@@ -657,6 +657,20 @@ async function sync_table_data(table_name, pk, api_endpoint)
             // throw new Error(`No syncable data in table`);
             return sync_result;
         }
+
+        /*if(table_data.length >= 10)
+            table_data = [
+                table_data[0],
+                table_data[1],
+                table_data[2],
+                table_data[3],
+                table_data[4],
+                table_data[5],
+                table_data[6],
+                table_data[7],
+                table_data[8],
+                table_data[9],
+            ];*/
 
 
         const num_rows_sent = table_data.length;
