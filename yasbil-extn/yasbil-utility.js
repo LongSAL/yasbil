@@ -5,20 +5,14 @@
  * Time: 09:41 AM CDT
  */
 //------------ sync constants -------------
-const REQ_NAMESPACE = 'yasbil/v2_0_0';
-const API_NAMESPACE = `/wp-json/${REQ_NAMESPACE}`;
-const DEL_THRESH = 7 * 24 * 60 * 60 * 1000 ; // 7 days in milliseonds
+const API_NAMESPACE = `/wp-json/yasbil/v2_0_0`;
+const CHECK_CONNECTION_ENDPOINT = '/check_connection';
 
 const TABLES_TO_SYNC = [{
     name: 'yasbil_sessions',
     pk: 'session_guid',
     api_endpoint: '/sync_table',
     nice_name: 'Sessions'
-}, {
-    name: 'yasbil_session_pagevisits',
-    pk: 'pv_guid',
-    api_endpoint: '/sync_table',
-    nice_name: 'Page Visits'
 }, {
     name: 'yasbil_session_mouse',
     pk: 'm_guid',
@@ -29,7 +23,12 @@ const TABLES_TO_SYNC = [{
     pk: 'webnav_guid',
     api_endpoint: '/sync_table',
     nice_name: 'Web Events'
-}
+}, {
+    name: 'yasbil_session_pagevisits',
+    pk: 'pv_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'Page Visits'
+},
 ];
 
 
@@ -46,7 +45,8 @@ db.version(1).stores({
 });
 
 db.open().then(async function (db) {
-    await update_sync_data_msg();
+    update_sync_data_msg();
+    __del_synced_data(); // delete data synced over a week ago
     console.log('Database opened successfully');
 }).catch (function (err) {
     console.log('DB Open Error occurred');
@@ -323,6 +323,30 @@ function yasbil_get_settings() {
 async function yasbil_verify_settings()
 {
     const settings = yasbil_get_settings();
+
+    //delete all cookies associated with Wordpress URL
+    // (esp if user is logged in to that wordpress installation)
+
+    const all_cookies = await browser.cookies.getAll({
+        domain: new URL(settings.URL).hostname
+    });
+
+    // console.log('all_cookies', all_cookies);
+
+    for(let ith_cookie of all_cookies)
+    {
+        //delete all cookies excep wordpress test cookie
+        if(ith_cookie.name !== 'wordpress_test_cookie')
+        {
+            const deleted_cookie = await browser.cookies.remove({
+                url: settings.URL,
+                name: ith_cookie.name
+            });
+            //console.log('deleting cookie', deleted_cookie);
+        }
+    }
+
+
     const basic_auth = btoa(settings.USER + ':' + settings.PASS);
 
     const myHeaders = new Headers();
@@ -335,7 +359,7 @@ async function yasbil_verify_settings()
     };
 
 
-    const req_url = settings.URL + API_NAMESPACE;
+    const req_url = settings.URL + API_NAMESPACE + CHECK_CONNECTION_ENDPOINT;
 
     // fetch() requires TWO promise resolutions:
     // 1. fetch() makes a network request to the url and returns a promise.
@@ -357,21 +381,22 @@ async function yasbil_verify_settings()
 
         // if invalid json response
         if(!json_resp)
-            throw new Error('Invalid Server URL.');
+            throw new Error('[E001] No response from server. Check server URL.');
 
 
-        if(json_resp.hasOwnProperty('code')) {
+        // check if response has a propoerty code
+        if(json_resp.hasOwnProperty('code'))
+        {
             if(json_resp.code === 'invalid_username' || json_resp.code === 'incorrect_password')
-                throw new Error('Invalid username / password combination.');
-        }
+                throw new Error('[E002] Invalid username / password combination.');
 
-        // check is json response has property 'namespace'
-        // whose value is equal to yasbil/v1
-        if(!(
-            json_resp.hasOwnProperty('namespace')
-            && json_resp.namespace === REQ_NAMESPACE
-        )){
-            throw new Error('Invalid Server URL.');
+            // if code is not yasbil_connection_succss
+            // (in class-yasbil-wp-admin.php --> yasbil_sync_check_connection() )
+            if(json_resp.code !== 'yasbil_connection_success')
+                throw new Error('[E003] User Disabled. Please contact researcher.');
+        }
+        else {
+            throw new Error('[E004]: Invalid Server URL.');
         }
     }
     catch (err)
@@ -433,6 +458,60 @@ async function update_sync_data_msg()
 
     set_sync_data_msg(sync_msg);
 }
+
+
+
+
+
+
+
+// -------------------- reset_sync_ts --------------------
+// in case of sync error: to be called manually
+// sets sync_ts = 0 in all tables
+// idea: can be synced to a backup WP server with plugin installed
+async function __reset_sync_ts()
+{
+    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
+    {
+        let tbl = TABLES_TO_SYNC[i];
+
+        let n_rows = await db.table(tbl.name)
+            .where('sync_ts').notEqual(0)
+            .modify({sync_ts: 0});
+
+        console.log(`Resetting ${tbl.name}; Num rows = ${n_rows}`);
+    }
+
+    await update_sync_data_msg();
+}
+
+
+
+
+
+// -------------------- __del_synced_data --------------------
+// deletes data synced over
+async function __del_synced_data()
+{
+    const DEL_THRESH = 7 * 24 * 60 * 60 * 1000 ; // 7 days in milliseonds
+    const oneWeekAgo = Date.now() - DEL_THRESH;
+
+    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
+    {
+        let tbl = TABLES_TO_SYNC[i];
+
+        const n_rows = await db.table(tbl.name)
+            .where('sync_ts')
+            // synct_ts = 0 are rows that haven't been synced
+            // 100 is safe choice
+            .between(100, oneWeekAgo)
+            .delete();
+
+        if(n_rows > 0)
+            console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
+    }
+}
+
 
 
 

@@ -30,25 +30,25 @@ $(document).ready(function()
             callback(return_data);
         },
         columns: [
-            {
+            {//session id
                 data: null, render: function (data, type, row) {
                     return row['session_guid'].substr(0, 6)+'...'
                 }
             },
 
-            {
+            {//start
                 data: null, render: function (data, type, row) {
                     return yasbil_milli_to_str(row['session_start_ts'])
                 }
             },
 
-            {
+            {//end
                 data: null, render: function (data, type, row) {
                     return yasbil_milli_to_str(row['session_end_ts'])
                 }
             },
 
-            {
+            {//platform
                 data: null, render: function (data, type, row) {
                     return `
                         ${row['platform_os']||''}
@@ -58,7 +58,7 @@ $(document).ready(function()
                 }
             },
 
-            {
+            {//Browser
                 data: null, render: function (data, type, row) {
                     return `
                         ${row['browser_vendor']||''}
@@ -88,9 +88,29 @@ $(document).ready(function()
         order: [[ 1, "desc" ]],
         ajax: async function (data, callback, settings)
         {
+
+            const arr_all_data = await db.table('yasbil_session_pagevisits').toArray();
+
+            //removing duplicate webNavigation event rows, using hist_ts value
+            const lookup = {};
+            const arr_unique = [];
+            for(let row of arr_all_data)
+            {
+                const unq_key = `${row['session_guid']}_${row['hist_ts']}`;
+
+                if(!row['pv_event'].startsWith('webNavigation'))
+                {
+                    arr_unique.push(row);
+                }
+                else if(!(unq_key in lookup))
+                {
+                    lookup[unq_key] = 1;
+                    arr_unique.push(row);
+                }
+            }
+
             callback({
-                'data': await db.table('yasbil_session_pagevisits')
-                    .toArray()
+                'data': arr_unique //arr_all_data //await db.table('yasbil_session_pagevisits').toArray()
             });
         },
         columns: [
@@ -122,7 +142,7 @@ $(document).ready(function()
                 data: null, render: function (data, type, row) {
                     return ` 
                     <small>
-                    ${row['pv_event'].replace('.', ' ')}
+                    ${row['pv_event'].replaceAll('.', ' ').replaceAll('_', ' ')}
                     </small>
                     `;
                 }
@@ -138,7 +158,15 @@ $(document).ready(function()
                 }
             },
 
-            {data: 'pv_transition_type'},
+            {// transition
+                data: null, render: function (data, type, row) {
+                    return ` 
+                    <small>
+                    ${row['pv_transition_type'].replaceAll('.', ' ').replaceAll('_', ' ')}
+                    </small>
+                    `;
+                }
+            },
 
             {//search engine: search query
                 data: null, render: function (data, type, row) {
@@ -175,17 +203,17 @@ $(document).ready(function()
                 });
             },
             columns: [
-                {
+                {//session id
                     data: null, render: function (data, type, row) {
                         return row['session_guid'].substr(0, 6)+'...'
                     }
                 },
-                {
+                {//ts
                     data: null, render: function (data, type, row) {
                         return yasbil_milli_to_str(row['m_ts'])
                     }
                 },
-                {
+                {//url
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
@@ -219,33 +247,28 @@ $(document).ready(function()
                         Browser: ${row['browser_w']} x ${row['browser_h']}
                         
                         <br/>
-                        Viewport: ${row['viewport_w']} x ${row['viewport_w']}
-                        <br style="margin-top: 15px"/>
-                        Viewport %: 
-                        ${(row['viewport_w']/row['page_w']*100).toFixed(0)} x 
-                        ${(row['viewport_h']/row['page_h']*100).toFixed(0)}
+                        Viewport: ${row['viewport_w']} x ${row['viewport_h']}
                         </small>
                         `;
                     }
                 },
 
                 {
-                    width: '15%',
+                    width: '20%',
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
-                        Pointer: ${row['mouse_x']}, ${row['mouse_y']}
+                        Pointer: 
+                        ${row['mouse_x']} 
+                        (${(row['mouse_x']/row['page_w']*100).toFixed(0)}%), 
+                        ${row['mouse_y']}
+                        (${(row['mouse_y']/row['page_h']*100).toFixed(0)}%)
                         <br/>
-                        Pointer %:
-                        ${(row['mouse_x']/row['page_w']*100).toFixed(0)},  
-                        ${(row['mouse_y']/row['page_h']*100).toFixed(0)}
-                        
-                        <br/>
-                        Scrolled: ${row['page_x']}, ${row['page_y']}
-                        <br style="margin-top: 15px"/>
-                        Scrolled %:
-                        ${(row['page_x']/row['page_w']*100).toFixed(0)},  
-                        ${(row['page_y']/row['page_h']*100).toFixed(0)}
+                        Scrolled: ${row['page_scrolled_y']}
+                        (${(row['page_scrolled_y']/row['page_h']*100).toFixed(0)}%)
+                        to
+                        ${row['page_scrolled_y']+row['viewport_h']}
+                        (${((row['page_scrolled_y']+row['viewport_h'])/row['page_h']*100).toFixed(0)}%)
                         </small>
                         `;
                     }

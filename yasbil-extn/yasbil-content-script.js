@@ -182,8 +182,8 @@ function cs_log_mouse(e_name, e, closest_a = null, hover_dur= 0)
         p_BG_interaction.postMessage(msg_obj);
     }
 
-    console.log(msg_obj.yasbil_ev_data);
-    console.log('CS:', e_name, new Date().getTime());
+    // console.log(msg_obj.yasbil_ev_data);
+    // console.log('CS:', e_name, new Date().getTime());
 }
 
 

@@ -50,6 +50,7 @@
     "storage",
     "unlimitedStorage",
     "history",
+    "cookies",
     "notifications"
   ]
 }

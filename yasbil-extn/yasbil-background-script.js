@@ -91,15 +91,16 @@ async function db_log_start(tabInfo)
         browser.webNavigation.onHistoryStateUpdated.addListener(listener_webNav_onHistUpd);
 
         //4. log all currently open tabs as initial page visit
+        // capture more data than less
         const arr_all_tabs = await browser.tabs.query({});
-        const arr_active_tabs = await browser.tabs.query({currentWindow: true, active: true});
+        //const arr_active_tabs = await browser.tabs.query({currentWindow: true, active: true});
 
-        for(let tab of arr_active_tabs)
+        for(let tab of arr_all_tabs)
         {
             db_log_pagevisits(
                 tab.id,
                 session_start_ts, //current timestamp
-                'YASBIL',
+                'YASBIL_SESSION_START',
                 'YASBIL_SESSION_START',
             );
         }
@@ -394,7 +395,7 @@ async function db_log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         sync_ts: 0,
     };
 
-    console.log(data_row);
+    // console.log(data_row);
 
     await db.yasbil_session_pagevisits.add(data_row)
         .catch(function(error) {
@@ -417,7 +418,7 @@ async function db_log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
-    if(!is_tracking_allowed(p_url || tabInfo.url))
+    if(!is_tracking_allowed(tabInfo.url))
         return;
 
     // console.log(yasbil_ev_data);
@@ -431,7 +432,7 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
         tab_guid: get_tab_guid(tabInfo.id),
 
         m_event: yasbil_ev_data.e_name,
-        m_url: p_url || tabInfo.url,
+        m_url: tabInfo.url,
         m_ts: yasbil_ev_data.e_ts,
 
         zoom: yasbil_ev_data.zoom,
@@ -457,7 +458,7 @@ async function db_log_mouse(yasbil_ev_data, tabInfo, p_url)
         sync_ts: 0,
     };
 
-    console.log(data_row);
+    // console.log(data_row);
 
     await db.yasbil_session_mouse.add(data_row)
         .catch(function(error) {
@@ -509,7 +510,7 @@ async function db_log_webnav_events(
         sync_ts: 0,
     };
 
-    console.log(data_row);
+    // console.log(data_row);
 
     await db.yasbil_session_webnav.add(data_row)
         .catch(function(error) {
@@ -700,15 +701,19 @@ async function sync_table_data(table_name, pk, api_endpoint)
         const json_resp = checkJSON(txt_resp);
 
         if(!json_resp)
-            throw new Error(`Invalid JSON: ${txt_resp}`);
+            throw new Error(`Error syncing ${table_name}: Invalid JSON returned: ${txt_resp}`);
 
         sync_result.resp_body_json = json_resp;
 
 
         // --------- STEP 4: tallying response rows with request rows ---------
+        if(!json_resp.hasOwnProperty('guids'))
+            throw new Error(`Error syncing ${table_name}: No GUIDs returned: ${txt_resp}`);
+
         const num_rows_received = json_resp.guids.length;
+
         if(num_rows_sent !== num_rows_received)
-            throw new Error(`Rows sent = ${num_rows_sent}; Rows received = ${num_rows_received}`);
+            throw new Error(`Error syncing ${table_name}: Rows sent = ${num_rows_sent}; Rows received = ${num_rows_received}`);
 
 
         // --------- STEP 5: update table rows with received sync_ts ---------
@@ -813,47 +818,9 @@ function listener_runtime_onConnect(p)
 
 
 
-// -------------------- reset_sync_ts --------------------
-// in case of sync error: to be called manually
-// sets sync_ts = 0 in all tables
-// idea: can be synced to a backup WP server with plugin installed
-async function __reset_sync_ts()
-{
-    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
-    {
-        let tbl = TABLES_TO_SYNC[i];
-
-        let n_rows = await db.table(tbl.name)
-            .where('sync_ts').notEqual(0)
-            .modify({sync_ts: 0});
-
-        console.log(`Resetting ${tbl.name}; Num rows = ${n_rows}`);
-    }
-
-    update_sync_data_msg();
-}
 
 
-// -------------------- __del_synced_data --------------------
-// deletes data synced over
-async function __del_synced_data()
-{
-    const oneWeekAgo = Date.now() - DEL_THRESH;
 
-    for (let i = 0; i < TABLES_TO_SYNC.length; i++)
-    {
-        let tbl = TABLES_TO_SYNC[i];
-
-        const n_rows = await db.table(tbl.name)
-            .where('sync_ts')
-            // synct_ts = 0 are rows that haven't been synced
-            // 100 is safe choice
-            .between(100, oneWeekAgo)
-            .delete();
-
-        console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
-    }
-}
 
 
 

@@ -85,7 +85,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`tab_height`||
 |--------------|--------------|
 |`pv_ts`|timestamp of webpage visit|
-|`pv_event`| event that fired the pagevisit |
+|`pv_event`| event that caused the pagevisit: <br/> `YASBIL_SESSION_START`: all the tabs at the start of a recording session <br/>`webNavigation.onCompleted`: page has finished loading <br/>`tabs.onActivated`: user switched to a previously opened tab <br/>`webNavigation.onHistoryStateUpdated`: page updated the browser history record|
 |`pv_url`||
 |`pv_title`||
 |`pv_hostname`||
@@ -93,7 +93,7 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`pv_transition_type`| [Transition type](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType)|
 |`pv_page_text`|captured using `document.body.innerText` after page has loaded |
 |`pv_page_html`|captured using `document.body.innerText` after page has loaded |
-|`hist_ts`||
+|`hist_ts`| Timestamp of pagevisit as stored in browser history. Select DISTINCT or group by this column to deal with redundant rows|
 |`hist_visit_ct`||
 |`pv_srch_engine`||
 |`pv_srch_qry`||

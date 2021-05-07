@@ -64,10 +64,16 @@ class YASBIL_WP_Admin {
     {
         //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/sync_table
 
+        register_rest_route('yasbil/v2_0_0', 'check_connection', [
+            'methods'             => WP_REST_Server::READABLE, //GET
+            'callback'            => array($this, 'yasbil_sync_check_connection'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);
+
         register_rest_route('yasbil/v2_0_0', 'sync_table', [
             'methods'             => WP_REST_Server::CREATABLE, //POST
             'callback'            => array($this, 'yasbil_sync_table'),
-            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
         ]);
 
         /*register_rest_route('yasbil/v1', 'sync_sessions', [
@@ -79,7 +85,7 @@ class YASBIL_WP_Admin {
             'callback'            => array($this, 'yasbil_sync_sessions_table'),
             // Here we register our permissions callback. The callback is fired
             // before the main callback to check if the current user can access the endpoint.
-            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
         ]);*/
 
         //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v1/sync_pagevisits
@@ -87,7 +93,7 @@ class YASBIL_WP_Admin {
         /*register_rest_route('yasbil/v1', 'sync_pagevisits', [
             'methods'             => WP_REST_Server::CREATABLE, //POST
             'callback'            => array($this, 'yasbil_sync_pagevisits_table'),
-            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
         ]);*/
 
         // multiple endpoints can be registered in one function..
@@ -424,14 +430,14 @@ class YASBIL_WP_Admin {
             <p>All timestamps are in UTC.</p>
 
             <style>
-                .badge-success {
+                .badge-enabled {
                     color: #fff;
-                    background-color: #28a745;
+                    background-color: #007bff;
                 }
 
-                .badge-danger {
+                .badge-disabled {
                     color: #fff;
-                    background-color: #dc3545;
+                    background-color: #aaa;
                 }
 
                 .badge {
@@ -521,10 +527,10 @@ class YASBIL_WP_Admin {
                             {
                                 $user_info = get_userdata($user_id);
                                 $user_status = $this->yasbil_get_user_status($user_id);
-                                $user_status_badge = "<span class='badge badge-success'>ENABLED</span>";
+                                $user_status_badge = "<span class='badge badge-enabled'>ENABLED</span>";
 
                                 if($user_status === "DISABLED")
-                                    $user_status_badge = "<span class='badge badge-danger'>DISABLED</span>";
+                                    $user_status_badge = "<span class='badge badge-disabled'>DISABLED</span>";
 
                                 $user_data_url = admin_url('admin.php?page=yasbil_wp&user_id='.$user_id, 'https');
                                 $user_name = $user_info->user_login;
@@ -539,7 +545,7 @@ class YASBIL_WP_Admin {
 
                                 $sql_select_summary_stats = "
                             SELECT COUNT(DISTINCT s.session_guid) session_ct
-                                , COUNT(DISTINCT pv.pv_guid) pv_ct
+                                , COUNT(DISTINCT pv.hist_ts) pv_ct
                                 , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
                                 , (COUNT(DISTINCT pv.pv_guid) / COUNT(DISTINCT s.session_guid) ) pv_per_session
                                 , MAX(pv.pv_ts) last_activity
@@ -656,7 +662,6 @@ class YASBIL_WP_Admin {
             else
             {
                 // if no user-id is set, render the summary page
-                //$this->yasbil_html_admin_summary_data(); (NO!)
                 //redirect to summary page
 
                 $redirect_url = admin_url('admin.php?page=yasbil_wp-summary', 'https');
@@ -774,20 +779,30 @@ class YASBIL_WP_Admin {
             <h1>
                 Session ID:
                 <?=$row_s['session_id']?>
+                (<?=$this->yasbil_truncate_str($row_s['session_guid'],9)?>)
             </h1>
 
             <p style="font-size:16px">
-                <b>Session Start:</b>
+                <b>Start Time:</b>
                 <?=$this->yasbil_milli_to_str($row_s['session_start_ts'], true)?>
                 &nbsp; &bull; &nbsp;
-                <b>Session End:</b>
+                <b>End Time:</b>
                 <?=$this->yasbil_milli_to_str($row_s['session_end_ts'], true)?>
                 &nbsp; &bull; &nbsp;
                 <b>Duration:</b>
                 <?=$this->yasbil_display_dur_diff($row_s['session_start_ts'], $row_s['session_end_ts'])?>
+
+                <br/>
+
+                <b>Platform:</b>
+                <?="{$row_s['platform_os']} {$row_s['platform_arch']} {$row_s['platform_nacl_arch']}"?>
                 &nbsp; &bull; &nbsp;
-                <b>Sync Time:</b>
+                <b>Browser:</b>
+                <?="{$row_s['browser_vendor']} {$row_s['browser_name']} {$row_s['browser_version']}"?>
+                &nbsp; &bull; &nbsp;
+                <b>Synced:</b>
                 <?=$this->yasbil_milli_to_str($row_s['sync_ts'], true)?>
+
 
                 <br/><br/>
 
@@ -802,7 +817,7 @@ class YASBIL_WP_Admin {
                     FROM $tbl_pagevisits pv
                     WHERE 1=1
                     and pv.session_guid = %s
-                    and TRIM(pv.pv_url) LIKE '%://%'
+                    group by pv.hist_ts
                     ORDER BY pv.pv_ts asc
                 ";
 
@@ -827,22 +842,16 @@ class YASBIL_WP_Admin {
 
                             <!-- visible-->
                             <th>Timestamp</th>
-                            <th>Window</th>
-                            <th>Tab</th>
-                            <th>
-                                Transition <a target="_blank"
-                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType"
-                                >Type</a>
-                            </th>
-                            <th>
-                                Transition <a target="_blank"
-                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier"
-                                >Qualifier</a>
-                            </th>
-                            <th>Search Engine</th>
-                            <th>Search Query</th>
-                            <th>URL Host</th>
+                            <th>Window# | Tab#</th>
+                            <th>URL</th>
+                            <th>Navigation Event</th>
                             <th>Page Title</th>
+                            <th>
+                                <a target="_blank"
+                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
+                                >Transition</a>
+                            </th>
+                            <th>Search Engine, Search Query</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -872,7 +881,9 @@ class YASBIL_WP_Admin {
 
                 //$transition_type = $row_pv['pv_transition_type'];
 
-                $url_host = $this->yasbil_truncate_str($row_pv['pv_hostname']);
+                $url_host = '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
+                    . $row_pv['pv_hostname']
+                    . '</a>';
 
                 $title = '<a target="_blank" title="'.$row_pv['pv_title'].'" href="'. esc_url($row_pv['pv_url']) . '">'
                     . $this->yasbil_truncate_str($row_pv['pv_title'])
@@ -888,14 +899,20 @@ class YASBIL_WP_Admin {
 
                         <!--visible-->
                         <td><?=$time?></td>
-                        <td><?=$window?></td>
-                        <td><?=$tab?></td>
-                        <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
-                        <td><?=$row_pv['pv_transition_qualifier']?></td>
-                        <td><?=$row_pv['pv_srch_engine']?></td>
-                        <td><?=$row_pv['pv_srch_qry']?></td>
+                        <td>
+                            <?=$window?> | <?=$tab?>
+                        </td>
                         <td><?=$url_host?></td>
-                        <td><?=$title?></td>
+                        <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
+                        <td>
+                            <?=str_replace(
+                                ['.',  '+',  '?',  '/',  '='],
+                                ['. ', '+ ', '? ', '/ ', '= '],
+                                $row_pv['pv_title']
+                            )?>
+                        </td>
+                        <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
+                        <td><?="<b>{$row_pv['pv_srch_engine']}</b><br/>{$row_pv['pv_srch_qry']}"?></td>
                     </tr>
 <?php
             } // --------- end pagevisit loop -------------
@@ -955,7 +972,7 @@ class YASBIL_WP_Admin {
      * @param WP_REST_Request $request Full data about the request.
      * @return WP_Error|bool
      */
-    function yasbil_sync_permissions_check( $request )
+    function yasbil_sync_check_permission( $request )
     {
         /**
          * Restrict YASBIL endpoints to only users who have the read capability (subscriber and above).
@@ -998,6 +1015,19 @@ class YASBIL_WP_Admin {
         // by returning false here and changing the permissions check.
         return true;
          *****/
+    }
+
+
+
+    function yasbil_sync_check_connection( $request )
+    {
+        $response_body = [];
+        $response_body['code'] = 'yasbil_connection_success';
+
+        $response = new WP_REST_Response( $response_body );
+        $response->set_status( 201 );
+
+        return $response;
     }
 
 
@@ -1149,7 +1179,7 @@ class YASBIL_WP_Admin {
         }
         catch (Exception $e)
         {
-            return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+            return new rest_ensure_response(WP_Error('wp_exception', $e->getMessage(), array('status' => 400)));
         }
     }
 
