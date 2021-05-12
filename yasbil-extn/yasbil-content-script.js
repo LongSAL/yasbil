@@ -187,6 +187,37 @@ function cs_log_mouse(e_name, e, closest_a = null, hover_dur= 0)
 }
 
 
+// todo: scrape google ser
+// document.querySelectorAll('.g').forEach((elem, i, arr) => {console.log('--------------------',i,'-----------------');console.log(elem.innerText)})
+// Containers we want to scrape (and maybe delete)
+// const queries = document.getElementsByClassName("g").length > 0 ? document.getElementsByClassName("g") : null;
+// scrapeSerp: [queries, ["LC20lb", "st"], false],
+//
+// const peopleAskContainer = document.getElementsByClassName("JolIg mfMhoc")[0] ? document.getElementsByClassName("JolIg mfMhoc")[0].parentNode : null;
+// peopleAlsoAsk: [peopleAskContainer, ["related-question-pair"], true],
+//
+// const peopleSearchContainer = document.getElementsByClassName("lgJJud")[0];
+// peopleAlsoSearch: [peopleSearchContainer, ["f3LoEf", "iKt1P"], false],
+//
+// const searchRelatedContainer = document.getElementsByClassName("A07Bwc")[0];
+// relatedSearches: [searchRelatedContainer, ["s75CSd"], false]
+
+// Functions to help us scrape the divs
+// const checkContainer = (container, children, callback) => {
+//     container.forEach(
+//         container => children.forEach(
+//             child =>
+//                 [container.getElementsByClassName(child)].forEach(
+//                     child =>
+//                         [...child].forEach(
+//                             child => callback(child)
+//                         )
+//                 )
+//         )
+//     );
+// }
+
+
 
 // -------------- SCROLL -----------------------
 // using WHEEL or using SCROLL?
