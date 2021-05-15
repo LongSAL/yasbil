@@ -1,0 +1,368 @@
+/**
+ * Original Author: Nilavra Bhattacharya
+ * Author URL: https://nilavra.in
+ * Date: 2021-05-14
+ * Time: 09:45 AM CDT
+ *
+ * All functions that depend on DB (insert, sync, etc)
+ * Should only import constants and utils
+ *
+ */
+import Dexie from './dexie';
+import * as constant from 'yasbil_00_constants';
+import * as util from './yasbil_00_utils';
+
+const db = new Dexie("yasbil_db");
+
+db.version(1).stores(constant.DEXIE_DB_TABLES);
+
+db.open().then(async function (db) {
+    update_sync_data_msg();
+    __del_synced_data(); // delete data synced over a week ago
+    console.log('Database opened successfully');
+}).catch (function (err) {
+    console.log('DB Open Error occurred');
+    console.log(err);
+});
+
+// no need to export db?
+// export { db };
+
+// generic function to insert row in table
+export async function insert_row(table_name, data_row, upd_sync_msg=false)
+{
+    await db.table(table_name)
+        .add(data_row)
+        .catch(function(error) {
+            console.log(`${table_name} insert error: ${error}`);
+        });
+
+    // update sync message to show on front end
+    if(upd_sync_msg)
+        update_sync_data_msg(); // no need to await
+}
+
+// specific function to update sessions table
+export async function end_session()
+{
+    await db.yasbil_sessions.update(
+        util.get_session_guid(), {session_end_ts: new Date().getTime()}
+    ).catch(function(error)
+    {
+        console.log("Session End DB Error: " + error);
+    });
+}
+
+//-------------------- do_sync_job -----------------
+export async function do_sync_job()
+{
+    // 1. check login credential; if invalid send to settings page
+    // 2. upload data from tables one by one
+    // 2.1   update progress message and row counts
+    // 3 update tot row counts
+
+    // sync result:
+    // PROGRESS - show progress bar
+    // SUCCESS - hide progressbar
+    // ERROR - hide progress bar
+
+    try
+    {
+        util.set_sync_status('ON');
+        util.set_sync_result('PROGRESS');
+
+        // ---------- STEP 1: check login credential ----------
+        util.set_sync_progress_msg('Verifying sync credentials...');
+        let check_result = await yasbil_verify_settings();
+        if(!check_result.ok)
+        {
+            throw new Error(`
+                Invalid sync credentials. Please click 'Sync Settings'
+                link below and check.
+            `);
+        }
+
+        // ---------- STEP 2: syncing tables one by one ----------
+        util.set_sync_result('PROGRESS');
+
+        for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+        {
+            let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+
+            util.set_sync_progress_msg(`Now Syncing ${tbl.nice_name}`);
+
+            let sync_result = await sync_table_data(tbl.name, tbl.pk, tbl.api_endpoint);
+
+            if(!sync_result.ok)
+            {
+                throw new Error(`
+                    Error occurred while syncing ${tbl.nice_name}:
+                    ${sync_result.msg}
+                `);
+            }
+            else
+            {
+                increment_sync_rows_done(sync_result.num_rows_done);
+                set_sync_progress_msg(`Finished syncing ${tbl.nice_name}`);
+            }
+        }
+
+
+        // ---------- if all ends well ----------
+        util.set_sync_result('SUCCESS');
+        util.set_sync_progress_msg(`All data synced successfully.`);
+        util.update_sync_data_msg();
+    }
+    catch (err)
+    {
+        util.set_sync_result('ERROR');
+        util.set_sync_progress_msg(err.toString());
+    }
+    finally
+    {
+        // let user see sync message for 10 seconds before retrying sync
+        await util.sleep(10000);
+        util.set_sync_status('OFF');
+        //init/default condition of sync (for better UX - display of message)
+        util.set_sync_result('INIT');
+        util.set_sync_progress_msg('Initializing...');
+    }
+}
+
+
+
+//-------------------- sync_table_data (no need to export) -----------------
+async function sync_table_data(table_name, pk, api_endpoint)
+{
+    /**
+
+    - sync one table's data
+    - and update sync_ts in local db
+
+    -----------------------
+     Request JSON Format:
+    -----------------------
+    {
+        data_rows: [{row_1_obj}, {row_2_obj}, ..., {row_n_obj}],
+        num_row: n
+    }
+
+    -----------------------
+     Response JSON Format:
+    -----------------------
+    {
+        sync_ts: "1614297789223",
+        guids: ["49077092-8373-4fbf-8fbb-2e35ea163a22", "guid2", ..., "guid_n"]
+    }
+    */
+
+    const sync_result = {
+        ok: true,
+        // resp_body_json: null, // needed?
+        num_rows_done: 0,
+        msg:''
+    };
+
+    try
+    {
+        // --------- STEP 1: SELECTing table data ---------
+        let table_data = await db.table(table_name)
+            .where('sync_ts').equals(0)
+            .toArray();
+
+        if(!table_data || table_data.length === 0){
+            // throw new Error(`No syncable data in table`);
+            return sync_result;
+        }
+
+        //todo: check payload length for large table data
+        //const size_bytes = new TextEncoder().encode(JSON.stringify(table_data)).length
+        //const size_kb = size_bytes / 1024;
+
+
+        /*if(table_data.length >= 10)
+            table_data = [
+                table_data[0],
+                table_data[1],
+                table_data[2],
+                table_data[3],
+                table_data[4],
+                table_data[5],
+                table_data[6],
+                table_data[7],
+                table_data[8],
+                table_data[9],
+            ];*/
+
+
+        const num_rows_sent = table_data.length;
+
+        // --------- STEP 2: setting up POST request ---------
+        const settings = util.yasbil_get_settings();
+        const basic_auth = btoa(settings.USER + ':' + settings.PASS);
+
+        const myHeaders = new Headers();
+        myHeaders.append("Authorization", "Basic " + basic_auth);
+        myHeaders.append("Content-Type", "application/json");
+
+        let body_data = JSON.stringify({
+            table_name: table_name,
+            client_pk_col: pk,
+            num_rows: num_rows_sent,
+            data_rows: table_data
+        });
+
+        const req_options = {
+            method: 'POST',
+            headers: myHeaders,
+            body: body_data,
+            redirect: 'follow'
+        };
+
+        const req_url = settings.URL + constant.API_NAMESPACE + api_endpoint;
+
+
+        // --------- STEP 3: making request and parsing response ---------
+
+        // fetch() requires TWO promise resolutions:
+        // 1. fetch() makes a network request to the url and returns a promise.
+        //    The promise resolves with a response object when the remote server
+        //    responds with headers, but BEFORE the full response is downloaded.
+        // 2. To read the full response, we should call the method response.text():
+        //    it returns a promise that resolves when the full text is downloaded
+        //    from the remote server, with that text as a result.
+
+        const response = await fetch(req_url, req_options)
+        const txt_resp = await response.text();
+        const json_resp = util.checkJSON(txt_resp);
+
+        if(!json_resp)
+            throw new Error(`Error syncing ${table_name}: Invalid JSON returned: ${txt_resp}`);
+
+        sync_result.resp_body_json = json_resp;
+
+
+        // --------- STEP 4: tallying response rows with request rows ---------
+        if(!json_resp.hasOwnProperty('guids'))
+            throw new Error(`Error syncing ${table_name}: No GUIDs returned: ${txt_resp}`);
+
+        const num_rows_received = json_resp.guids.length;
+
+        if(num_rows_sent !== num_rows_received)
+            throw new Error(`Error syncing ${table_name}: Rows sent = ${num_rows_sent}; Rows received = ${num_rows_received}`);
+
+
+        // --------- STEP 5: update table rows with received sync_ts ---------
+        const upd_sync_ts = parseInt(json_resp.sync_ts);
+        await db.table(table_name)
+            .where(pk)
+            .anyOf(json_resp.guids)
+            //.where('sync_ts').equals(0)
+            .modify({sync_ts: upd_sync_ts});
+
+        sync_result.num_rows_done = num_rows_received;
+    }
+    catch (err)
+    {
+        console.log(err);
+        sync_result.ok = false;
+        sync_result.msg = err.toString();
+    }
+
+    return sync_result;
+}
+
+
+
+//-------------------- update_sync_data_msg (no need to export) -----------------
+async function update_sync_data_msg()
+{
+    let n_tot = 0;
+    let sync_msg = //`<i>No data available to sync.</i>` +
+        `<i> Turn on logging and browse the internet to record data.</i>`;
+    let row_counts_html = "<p class='text-end' style='width: 80%'>";
+
+    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    {
+        const tbl = constant.ARR_TABLES_SYNC_INFO[i];
+
+        const row_count = await db.table(tbl.name)
+            .where('sync_ts')
+            .equals(0)
+            .count();
+
+        n_tot += row_count;
+
+        row_counts_html = row_counts_html +
+            `${tbl.nice_name}: <b>${row_count}</b> rows <br/>`;
+    }
+
+    row_counts_html = row_counts_html +
+        "---------------------------<br/>" +
+        "Total: <b>" + n_tot + "</b> rows <br/>" +
+        "---------------------------" +
+        "</p>";
+
+    // util.set_sync_rows_tot(n_tot);
+
+    if(n_tot > 0)
+    {
+        if(util.get_sync_status() === "OFF")
+            sync_msg = `Data ready to sync:<br/><br/>${row_counts_html}`;
+        else
+            sync_msg = `Data being to synced:<br/><br/>${row_counts_html}`;
+    }
+
+    util.set_sync_data_msg(sync_msg);
+}
+
+// -------------------- reset_sync_ts --------------------
+async function __reset_sync_ts()
+{
+    // in case of sync error: to be called manually
+    // sets sync_ts = 0 in all tables
+    // idea: can be synced to a backup WP server with plugin installed
+
+    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    {
+        let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+
+        let n_rows = await db.table(tbl.name)
+            .where('sync_ts').notEqual(0)
+            .modify({sync_ts: 0});
+
+        console.log(`Resetting ${tbl.name}; Num rows = ${n_rows}`);
+    }
+
+    await update_sync_data_msg();
+}
+
+
+// -------------------- __del_synced_data --------------------
+async function __del_synced_data()
+{
+    const __DAY_THRESH = 7; // 7 days...
+    const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
+    const oneWeekAgo = Date.now() - DEL_THRESH;
+
+    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    {
+        let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+
+        //change str to int
+        // db.table(tbl.name).toCollection().modify(row => {
+        //     row.sync_ts = parseInt(row.sync_ts);
+        // });
+
+        const n_rows = await db.table(tbl.name)
+            .where('sync_ts')
+            // synct_ts = 0 are rows that haven't been synced
+            // [100 ms from epoch] is safe choice
+            .between(100, oneWeekAgo)
+            .delete();
+
+        if(n_rows > 0)
+            console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
+    }
+}
+

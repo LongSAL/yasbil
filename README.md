@@ -95,8 +95,8 @@ interaction with YASBIL (both browser extension and WordPress plugin).
 |`pv_page_html`|captured using `document.body.innerText` after page has loaded |
 |`hist_ts`| Timestamp of pagevisit as stored in browser history. Select DISTINCT or group by this column to deal with redundant rows|
 |`hist_visit_ct`||
-|`pv_srch_engine`||
-|`pv_srch_qry`||
+|`pv_search_engine`|name of search engine, if current URL is a SERP|
+|`pv_search_query`|search query submitted, if current URL is a SERP, extracted from query parameters|
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|
 
 
@@ -180,7 +180,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`tab_guid`|unique ID for the browser tab in which event occurs|
 |--------------|--------------|
 |`webnav_ts`|timestamp of event (ms since epoch)|
-|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onCompleted`|
+|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onHistoryStateUpdated`, `onCompleted`|
 |`webnav_url`|url of page / frame |
 |`webnav_transition_type`|only for `onCommitted` event: [`transitionType`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType): The reason for the navigation|
 |`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
@@ -188,7 +188,61 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
 
-------
+------------
+
+### `yasbil_session_serp_scrape`
+- stores scrapes of (Google) SERP
+- store query and search results (thanks to wonderful [CoNotate plugin](https://github.com/creativecolab/CHI2021-CoNotate))
+- contents of this table are experimental, depending on major search engines keeping their SERP HTML constant
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`scrape_id`|server only; PK; auto-increment|
+|`scrape_guid`|PK in client|
+|`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
+|`scrape_ts`|timestamp of scrape|
+|`scrape_url`|url of the page|
+|`srch_engine`|name of search engine (currently only GOOGLE)|
+|`srch_query`|search query, extracted from URL parameter|
+|`serp_pg_no`|page number of search results, extracted from URL parameter|
+|--------------|--------------|
+|`scraped_json_obj`|stringified JSON object; details below|
+|--------------|--------------|
+|`scrape_rel_srch`|scraped contents of "related searches"; JSON array of objects, stringified|
+|`scrape_ppl_ask`|scraped contents of "people also ask"; JSON array stringified|
+|`scrape_ppl_srch`|scraped contents of "people also search"; JSON array stringified|
+|--------------|--------------|
+|`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
+
+
+
+
+Google SERP JSON structure
+```
+{
+    search_results: [], //array of main search results (blue links)
+    related_searches: [], //"related searches"
+    ppl_ask: [], //"people also ask"
+    ppl_search: [] //"people also search"
+}
+```
+
+
+
+----------
+
+
+
+
+
+
+
 
 ## Participant Management
 Participant will be able to sync data to the server if the
