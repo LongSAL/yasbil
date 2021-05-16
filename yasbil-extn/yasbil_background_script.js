@@ -57,9 +57,9 @@ function listener_runtime_onConnect(p)
         // ----- logging; NOT syncing -----
         else if(is_logging && !is_syncing)
         {
-            if (yasbil_msg === "DB_LOG_MOUSE")
+            if (yasbil_msg === "LOG_MOUSE_AND_SCROLL")
             {
-                log_mouse(
+                log_mouse_and_scroll(
                     m.yasbil_ev_data,
                     sendingPort.sender.tab,
                     sendingPort.url
@@ -449,8 +449,8 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 
 
 
-// -------------------- log_mouse --------------------
-function log_mouse(yasbil_ev_data, tabInfo)
+// -------------------- log_mouse and scroll --------------------
+function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
     if(!util.is_tracking_allowed(tabInfo.url))

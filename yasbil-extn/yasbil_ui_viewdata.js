@@ -90,27 +90,31 @@ $(document).ready(function()
 
             const arr_all_data = await db.select_all('yasbil_session_pagevisits');
 
-            //removing duplicate webNavigation event rows, using hist_ts value
-            const lookup = {};
-            const arr_unique = [];
-            for(let row of arr_all_data)
-            {
-                const unq_key = `${row['session_guid']}_${row['hist_ts']}`;
-
-                if(!row['pv_event'].startsWith('webNavigation'))
-                {
-                    arr_unique.push(row);
-                }
-                else if(!(unq_key in lookup))
-                {
-                    lookup[unq_key] = 1;
-                    arr_unique.push(row);
-                }
-            }
-
             callback({
-                'data': arr_unique //arr_all_data
+                'data': arr_all_data
             });
+
+            //removing duplicate webNavigation event rows, using hist_ts value
+            // const lookup = {};
+            // const arr_unique = [];
+            // for(let row of arr_all_data)
+            // {
+            //     const unq_key = `${row['session_guid']}_${row['hist_ts']}`;
+            //
+            //     if(!row['pv_event'].startsWith('webNavigation'))
+            //     {
+            //         arr_unique.push(row);
+            //     }
+            //     else if(!(unq_key in lookup))
+            //     {
+            //         lookup[unq_key] = 1;
+            //         arr_unique.push(row);
+            //     }
+            // }
+            //
+            // callback({
+            //     'data': arr_unique //arr_all_data
+            // });
         },
         columns: [
             {//guid
@@ -124,13 +128,17 @@ $(document).ready(function()
                 }
             },
 
-            { // url
+            { // url and sizes
                 data: null, render: function (data, type, row) {
                     return `
                     <small>
                     <a href='${row['pv_url']}' target='_blank'>
                         ${row['pv_hostname']}
                     </a>
+                    <br/>
+                    Text: ${(row['pv_page_text'].length/1000).toFixed(1)}k 
+                    <br/>
+                    HTML: ${(row['pv_page_html'].length/1000).toFixed(1)}k
                     </small>
                     `;
                 }
@@ -152,6 +160,7 @@ $(document).ready(function()
                     return ` 
                     <small>
                     ${row['pv_title']}
+                    
                     </small>
                     `;
                 }
@@ -170,9 +179,9 @@ $(document).ready(function()
             {//search engine: search query
                 data: null, render: function (data, type, row) {
                     return `
-                    ${row['pv_srch_engine']}
+                    ${row['pv_search_engine']}
                     <br/>
-                    ${row['pv_srch_qry']}
+                    ${row['pv_search_query']}
                 `;
                 }
             },
@@ -338,16 +347,6 @@ $(document).ready(function()
                         `;
                     }
                 },
-
-                // {//frame id
-                //     data: null, render: function (data, type, row) {
-                //         return `
-                //         ${row['frame_id'] > 0 ? 'IFRAME' : 0}
-                //         `;
-                //     }
-                // },
-
-
 
                 {//transition
                     data: null, render: function (data, type, row) {

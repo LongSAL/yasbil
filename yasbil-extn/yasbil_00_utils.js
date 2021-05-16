@@ -109,7 +109,7 @@ export function is_tracking_allowed(p_url_str)
             if(a.hostname.startsWith(d) || a.protocol.startsWith(d))
             {
                 res = false;
-                console.log(`NO TRACKING: ${a.href}`);
+                // console.log(`NO TRACKING: ${a.href}`);
                 break;
             }
         }

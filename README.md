@@ -125,7 +125,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`tab_guid`|unique ID for the browser tab in which mouse activity occurs|
 |--------------|--------------|
 |`m_ts`|timestamp of mouse activity|
-|`m_event`|Mouse event type: `MOUSE_HOVER`, `MOUSE_CLICK`,  `MOUSE_RCLICK`, `MOUSE_DBLCLICK`|
+|`m_event`|Mouse event type: `MOUSE_HOVER`, `MOUSE_CLICK`,  `MOUSE_RCLICK`, `MOUSE_DBLCLICK`, `SCROLL`|
 |`m_url`|url of the page|
 |--------------|--------------|
 |`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
@@ -136,11 +136,13 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
 |`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
 |--------------|--------------|
-|`page_scrolled_x`| `window.pageXOffset` page horizontally scrolled|
-|`page_scrolled_y`| `window.pageYOffset` page vertically scrolled|
+|`page_scrolled_x`| `window.pageXOffset` page horizontally scrolled, frop top left|
+|`page_scrolled_y`| `window.pageYOffset` page vertically scrolled, from top left|
 |`mouse_x`| `MouseEvent.pageX` X (horizontal) coordinate (in pixels) at which the mouse was clicked, relative to the left edge of the entire document. This includes any portion of the document not currently visible|
 |`mouse_y`| `MouseEvent.pageY` Y (vertical) coordinate in pixels of the event relative to the whole document. This property takes into account any vertical scrolling of the page|
 |`hover_dur`|duration of hover (if `MOUSE_HOVER` event) in milliseconds|
+|`scroll_x_delta`|amount of horizontal pixels scrolled in current `SCROLL` event, recorded for every 1% of page width or more |
+|`scroll_y_delta`|amount of vertical pixels scrolled in current `SCROLL` event, recorded for every 1% of page height or more|
 |--------------|--------------|
 |`dom_path`|sequence of element tags up the DOM hierarchy from the target element to HTML|
 |`target_text`|rendered text of the target element of the event|
