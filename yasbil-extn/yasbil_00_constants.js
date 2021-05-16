@@ -7,6 +7,8 @@
  * Util functions that do not depend on DB
  */
 
+
+
 // database table names
 export const DEXIE_DB_TABLES = {
     yasbil_sessions: 'session_guid,sync_ts',

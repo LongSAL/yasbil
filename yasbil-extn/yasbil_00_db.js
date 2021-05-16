@@ -8,9 +8,9 @@
  * Should only import constants and utils
  *
  */
-import Dexie from './dexie';
-import * as constant from 'yasbil_00_constants';
-import * as util from './yasbil_00_utils';
+import Dexie from './dexie.mjs';
+import * as constant from './yasbil_00_constants.js';
+import * as util from './yasbil_00_utils.js';
 
 const db = new Dexie("yasbil_db");
 
@@ -41,6 +41,13 @@ export async function insert_row(table_name, data_row, upd_sync_msg=false)
     if(upd_sync_msg)
         update_sync_data_msg(); // no need to await
 }
+
+// generic function to select all rows from table as array
+export async function select_all(table_name)
+{
+    return await db.table(table_name).toArray();
+}
+
 
 // specific function to update sessions table
 export async function end_session()
@@ -275,7 +282,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
 
 
 //-------------------- update_sync_data_msg (no need to export) -----------------
-async function update_sync_data_msg()
+export async function update_sync_data_msg()
 {
     let n_tot = 0;
     let sync_msg = //`<i>No data available to sync.</i>` +
@@ -305,16 +312,21 @@ async function update_sync_data_msg()
 
     // util.set_sync_rows_tot(n_tot);
 
+    util.set_sync_rows_tot(n_tot);
+
     if(n_tot > 0)
     {
         if(util.get_sync_status() === "OFF")
             sync_msg = `Data ready to sync:<br/><br/>${row_counts_html}`;
         else
-            sync_msg = `Data being to synced:<br/><br/>${row_counts_html}`;
+            sync_msg = `Data being synced:<br/><br/>${row_counts_html}`;
     }
 
     util.set_sync_data_msg(sync_msg);
 }
+
+
+
 
 // -------------------- reset_sync_ts --------------------
 async function __reset_sync_ts()

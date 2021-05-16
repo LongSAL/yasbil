@@ -5,9 +5,10 @@
  * Time: 10:13 AM CDT
  */
 
-import * as constant from 'yasbil_00_constants';
-import * as util from './yasbil_00_utils';
-import * as db from './yasbil_00_db';
+
+import * as constant from './yasbil_00_constants.js';
+import * as util from './yasbil_00_utils.js';
+import * as db from './yasbil_00_db.js';
 
 // initial state of browser extension: false
 console.log('Initializing YASBIL extn');
@@ -361,13 +362,6 @@ function listener_webNav_onHistUpd(details)
 }
 
 
-
-
-
-
-
-
-
 // -------------------- log_pagevisits --------------------
 // single helper function to log pagevisits
 // takes tabId, timestamp of visit, event-name that triggered this,
@@ -403,7 +397,8 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         transition_typ = p_tran_typ;
 
     // get page text and HTML
-    // executeScript() returns array of objects = result of the script in every injected frame
+    // executeScript() returns array of objects
+    // = result of the script running in every injected frame
     const page_text = await browser.tabs.executeScript(
         tabId,
         {code: 'document.body.innerText;'}
@@ -437,6 +432,8 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         pv_page_text: page_text[0], // taking the first element
         pv_page_html: page_html[0],
 
+        //TODO: opengraph tags
+
         hist_ts: hist_visit_time,
         hist_visit_ct: hist_visit_count,
         pv_search_engine: se_info.search_engine,
@@ -448,10 +445,6 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 
     await db.insert_row('yasbil_session_pagevisits', data_row,true);
 }
-
-
-
-
 
 
 

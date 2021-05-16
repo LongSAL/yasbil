@@ -1,0 +1,109 @@
+<!--
+ * Original Author: Nilavra Bhattacharya
+ * Author URL: https://nilavra.in
+ * Date: 2021-01-12
+ * Time: 07:11 PM CDT
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YASBIL Popup</title>
+    <link rel="stylesheet" href="css/bootstrap.v5.0.0-beta1.css">
+    <script src="js/jquery-3.5.1.js"></script>
+    <script src="js/bootstrap.bundle.v5.0.0-beta1.js"></script>
+    <script type="module" src="yasbil_ui_popup.js"></script>
+</head>
+<body>
+
+<main class="container p-4" style="max-width: 350px">
+
+    <!----- header ------->
+    <h1 class="mx-auto text-center">YASBIL</h1>
+    <p class="text-capitalize fst-italic text-center">
+        Yet Another Search Behaviour & Interaction Logger
+    </p>
+
+    <hr/>
+
+    <!------ logging controls ----->
+    <div id="log_controls" class="mt-2">
+        <form id="formLogToggle" title="click to turn logging on/off">
+            <div class="form-check form-switch form-control-lg">
+                <input type="checkbox"
+                       id="logToggle" name="logToggle"
+                       class="form-check-input"
+                       style="cursor:pointer!important;"
+                >
+                <label class="form-check-label"
+                       for="logToggle" id="logToggleLabel"
+                       style="cursor:pointer!important;"
+                >
+                    Logging <span class="fs-5 badge bg-light text-dark">OFF</span>
+                </label>
+            </div>
+        </form>
+    </div>
+
+    <!------ sync progress ----->
+    <div id="sync_progress" class="alert">
+        <p id="sync_progress_msg"></p>
+
+        <div class="mt-4" id="sync_progressbar">
+            <div class="spinner-border text-primary" role="status">
+            </div>
+            <!--div class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 aria-valuenow="75"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 style="width: 75%"></div-->
+        </div>
+    </div>
+
+    <hr/>
+
+
+    <!------- sync data ------->
+    <p id="sync_data_msg" class="text-center"></p>
+
+    <hr/>
+
+
+    <!---- sync data button ------>
+    <div id="sync_controls" class="mt-0">
+        <p class="text-center">
+            <button id="do_sync" class="btn btn-lg btn-outline-secondary" type="button">Sync Data</button>
+            <!--a href="yasbil-options.html" class="d-block mt-2" target="_blank">Sync Settings</a-->
+        </p>
+
+        <hr/> <!-- this hr needs to be inside div#sync_controls for hiding display -->
+    </div>
+
+
+
+
+    <!--- links ---->
+    <p class="text-center">
+        <a href="yasbil_ui_options.html" class="link-success" target="_blank">Sync Settings</a>
+    </p>
+
+    <p class="text-center mt-1">
+        <a href="yasbil_ui_viewdata.html" class="link-secondary" target="_blank">
+            View Local Data
+        </a>
+    </p>
+
+    <p class="text-center">
+        <a id="yasbil_wpl_url" href="#" class="link-secondary" target="_blank">
+            View Remote Data
+        </a>
+    </p>
+
+
+
+</main>
+
+</body>
+</html>

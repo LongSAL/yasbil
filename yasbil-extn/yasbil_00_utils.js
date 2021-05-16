@@ -8,7 +8,7 @@
  * should only import constants
  */
 
-import * as yasbil_constants from 'yasbil_00_constants';
+import * as yasbil_constants from './yasbil_00_constants.js';
 
 
 //-------------------- get session GUID: returns "0" if not in session -----------------
@@ -244,6 +244,14 @@ export function get_sync_status() {
 
 export function set_sync_status(p_sync_status) {
     localStorage.setItem('YASBIL_SYNC_STATUS', p_sync_status.trim());
+}
+
+export function get_sync_rows_tot() {
+    return parseInt(localStorage.getItem('YASBIL_SYNC_N_ROWS_TOT'));
+}
+
+export function set_sync_rows_tot(p_sync_rows_tot) {
+    localStorage.setItem('YASBIL_SYNC_N_ROWS_TOT', p_sync_rows_tot);
 }
 
 export function get_sync_data_msg() {
