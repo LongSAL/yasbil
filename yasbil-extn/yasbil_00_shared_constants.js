@@ -45,7 +45,7 @@ const ARR_TABLES_SYNC_INFO = [{
 
 // name of search engine; hostname pattern; search query param name
 const ARR_SEARCH_ENGINES = [
-    { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q' },
+    { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q'},
     { se_name: 'GOOGLE', host: 'google.', url_param: 'q' },
     { se_name: 'YOUTUBE', host: 'youtube.', url_param: 'search_query' },
     { se_name: 'BING', host: 'bing.', url_param: 'q' },

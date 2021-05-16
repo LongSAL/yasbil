@@ -59,7 +59,7 @@ function get_tab_guid(p_tab_id)
 // tries to identify search engine and search query from URL
 function get_search_engine_info(p_url_str)
 {
-    const res = {search_engine: '', search_query: ''};
+    const res = {search_engine: '', search_query: '', serp_pg_no: 1};
     const a = new URL(p_url_str);
 
     for(let se_item of ARR_SEARCH_ENGINES)
@@ -68,6 +68,7 @@ function get_search_engine_info(p_url_str)
         {
             res.search_engine = se_item.se_name;
             res.search_query = a.searchParams.get(se_item.url_param);
+
             break;
         }
     }
@@ -314,8 +315,12 @@ function yasbil_milli_to_str(ms)
 }
 
 
-
-
+// whether HTML element is visbile
+// https://stackoverflow.com/a/33456469
+function is_visible(elem)
+{
+    return !!( elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length );
+}
 
 
 

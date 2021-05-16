@@ -147,8 +147,12 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`dom_path`|sequence of element tags up the DOM hierarchy from the target element to HTML|
 |`target_text`|rendered text of the target element of the event|
 |`target_html`|`innerHTML` of the target element of the event|
+|`target_width`| width of the target (px)|
+|`target_height`| height of the target (px)|
 |`closest_a_text`|rendered text of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
 |`closest_a_html`|`innerHTML` of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
+|`closest_a_width`|width of the closest anchor tag (px)|
+|`closest_a_height`|height of the closest anchor tag (px)|
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
@@ -210,8 +214,8 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |--------------|--------------|
 |`scrape_ts`|timestamp of scrape|
 |`scrape_url`|url of the page|
-|`srch_engine`|name of search engine (currently only GOOGLE)|
-|`srch_query`|search query, extracted from URL parameter|
+|`search_engine`|name of search engine (currently only GOOGLE)|
+|`search_query`|search query, extracted from URL parameter|
 |`serp_pg_no`|page number of search results, extracted from URL parameter|
 |--------------|--------------|
 |`scraped_json_obj`|stringified JSON object; details below|
@@ -219,6 +223,14 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`scrape_rel_srch`|scraped contents of "related searches"; JSON array of objects, stringified|
 |`scrape_ppl_ask`|scraped contents of "people also ask"; JSON array stringified|
 |`scrape_ppl_srch`|scraped contents of "people also search"; JSON array stringified|
+--------------|--------------|
+|`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
+|`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
+|`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|`viewport_w`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
+|`viewport_h`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
+|`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
+|`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 

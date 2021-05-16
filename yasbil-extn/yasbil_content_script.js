@@ -40,6 +40,8 @@ function main()
     const se_info = get_search_engine_info(window.location.href);
     console.log(se_info);
 
+    scrape_serp();
+
     // for debouncing very rapidly firing events
     // using whatever keys as desired
     const PREV_LOG ={
@@ -141,12 +143,19 @@ function main()
         // getting dom_branch to parent
         // https://stackoverflow.com/a/8729274
         let dom_path_arr = [];
-        let target_text = '', target_html = '';
+        let target_text = '', target_html = '',
+            target_width = 0, target_height = 0
+        ;
+
 
         if(e.hasOwnProperty('target')) //possibly not true for SCROLL
         {
             target_text = e.target.innerText+'';
-            target_html = e.target.innerHTML
+            target_html = e.target.innerHTML;
+
+            const bb_rect = e.getBoundingClientRect();
+            target_width = bb_rect.width;
+            target_height = bb_rect.height;
 
             let el = e.target;
             while (el) {
@@ -175,10 +184,14 @@ function main()
 
                 target_text: target_text, //rendered text of the target element
                 target_html: target_html, //html of the target element
+                target_width: target_width,
+                target_height: target_height,
 
                 //only if closest a found
                 closest_a_text: '',
                 closest_a_html: '',
+                closest_a_width: 0,
+                closest_a_height: 0,
 
                 //for hover and click events
                 mouse_x: -1,
@@ -198,6 +211,11 @@ function main()
         {
             msg_obj.yasbil_ev_data.closest_a_text = closest_a.innerText;
             msg_obj.yasbil_ev_data.closest_a_html = closest_a.innerHTML;
+
+            const a_bb_rect = closest_a.getBoundingClientRect();
+            msg_obj.yasbil_ev_data.closest_a_width = a_bb_rect.width;
+            msg_obj.yasbil_ev_data.closest_a_height = a_bb_rect.height;
+
         }
 
         if(e_name === 'MOUSE_MOVE')
@@ -228,85 +246,168 @@ function main()
 
 
     // ----------------------- scrape SERPS --------------------
-
     function scrape_serp()
     {
-        if(se_info.search_engine === 'GOOGLE')
-            scrape_google_serp();
-        else if(se_info.search_engine === 'BING')
-            true;
+        if(!se_info.search_engine)
+            return;
+
+        const msg_obj = {
+            yasbil_msg: "LOG_SERP_SCRAPE",
+            yasbil_scrape_data: {
+                scrape_ts: new Date().getTime(),
+                ...get_viewport_properties(),
+
+                search_engine: se_info.search_engine,
+                search_query: se_info.search_query,
+
+                //TODO
+                serp_pg_no: se_info.serp_pg_no,
+
+                scraped_json_obj: null,
+
+
+            }
+        }
+
+        let scrape_obj = null;
+
+        switch (se_info.search_engine)
+        {
+            case "GOOGLE":
+                 scrape_obj = scrape_google_serp();
+                break;
+            case "BING":
+                break;
+
+        }
+
+        msg_obj.yasbil_scrape_data.scraped_json_obj = scrape_obj;
     }
 
 
 
-
+    // ---------- scrape Google SERP (haha!) ------------
     function scrape_google_serp()
     {
-        /** ---------  NOTES -----------
-         (1): https://scraperbox.com/blog/how-to-scrape-google-search-results-with-python
-         main search results:
-                 - document.querySelectorAll('#search .g h3')
-                 .forEach(function(e, i){
-                console.log(`[${i+1}]`, e.innerText)
-            })
-
-         - document.querySelectorAll('#search .g h3')
-                .forEach(function(e, i){
-                console.log(`[${i+1}]`,
-                parseInt((e.getBoundingClientRect().top + window.scrollY).toFixed(0)),
-                e.innerText)
-            })
-
-         - document.querySelectorAll('a')
-            .forEach(function(e, i){console.log(
-                parseInt((e.getBoundingClientRect().top + window.scrollY).toFixed(0)),
-                e.innerText,
-                e.clientHeight
-            )})
-         ---------------------*/
+        // https://scraperbox.com/blog/how-to-scrape-google-search-results-with-python
 
         const result_obj = {
-            search_results: [], //main search results (blue links)
-            related_searches: [], //"related searches" (almost all webpages)
+            // main search results (blue links)
+            // #search .g h3
+            // title: .g h3; snippet: .g .IsZvec
+            search_results: [],
+
+            //"related searches" (almost all webpages)
+            //
+            related_searches: [],
             ppl_ask: [], // "people also ask" (e.g. "jquery document ready")
             ppl_search: [] //"people also search"
 
         }
 
-        //---- main search results ----
+        // ----------- main search results -----------
+        console.log('----------- main search results -----------');
         document.querySelectorAll('.g').forEach(function(e, i)
         {
-            const search_result_i = {
+            try
+            {
+                const bb_rect = e.getBoundingClientRect();
+
+                const search_result_i = {
+                    page_x: bb_rect.left + window.scrollX,
+                    page_y: bb_rect.top + window.scrollY,
+                    result_width: bb_rect.width,
+                    result_height: bb_rect.height,
+
+                    main_title: "",
+                    main_url: "",
+                    snippet: "",
+                    inner_text: e.innerText,
+                    inner_html: e.innerHTML,
+                    nested_results:[] // visible nested urls that are different from main url
+                };
+
+                //main_title and main_url (contained in .g h3)
+                const h3 = e.querySelector('h3')
+                if(h3)
+                {
+                    search_result_i.main_title = h3.innerText;
+
+                    if(h3.closest('a'))
+                        search_result_i.main_url = h3.closest('a').href;
+                }
+
+                //snippet (contained in
+                if(e.querySelector('.IsZvec'))
+                    search_result_i.snippet = e.querySelector('.IsZvec').innerText;
+
+                // nested results
+                e.querySelectorAll('a').forEach(function(a, a_i)
+                {
+                    if(a.href !== search_result_i.main_url && is_visible(a))
+                    {
+                        search_result_i.nested_results.push({
+                            title: a.innerText,
+                            url: a.href
+                        });
+                    }
+                });
+
+                // add to array
+                result_obj.search_results.push(search_result_i);
+
+                console.log(
+                    (i+1), '||',
+                    //parseInt(search_result_i.page_y.toFixed(0)), '||',
+                    search_result_i.main_url ? new URL(search_result_i.main_url).hostname : "", '||',
+                    search_result_i.main_title, '||',
+                    search_result_i.snippet.substr(0, 50),
+                );
+
+                for(let elem of search_result_i.nested_results)
+                {
+                    console.log(
+                        '\t',
+                        elem.title, '||',
+                        elem.url ? new URL(elem.url).hostname : "",
+                    );
+                }
+            }
+            catch (e) {
+                console.log(`Error: ${e.toString()}`);
+            }
+
+        });
+
+
+        // ----------- related searches -----------
+        console.log('----------- related searches -----------');
+        document.querySelectorAll('.s75CSd').forEach(function(e, i)
+        {
+            const related_search_i = {
                 'page_y': e.getBoundingClientRect().top + window.scrollY,
-                'title': "",
-                'snippet': "",
                 'page_x': e.getBoundingClientRect().left + window.scrollX,
-                'url': "",
-                'inner_text': e.innerText,
+                'url': e.closest('a').href,
+                'inner_text': e.innerText, //contains the related search query
                 'inner_html': e.innerHTML,
             };
 
-            //title
-            if(e.querySelectorAll('h3').length > 0)
-                search_result_i.title = e.querySelectorAll('h3')[0].innerText;
-
-            //snippet
-            if(e.querySelectorAll('.IsZvec').length > 0)
-                search_result_i.snippet = e.querySelectorAll('.IsZvec')[0].innerText;
-
-            //url
-            if(e.querySelectorAll('h3').length > 0)
-                search_result_i.url = e.querySelectorAll('h3')[0].closest('a').href;
-
-
             // add to array
-            result_obj.search_results.push(search_result_i);
+            result_obj.related_searches.push(related_search_i);
 
-            console.log(search_result_i);
-            console.log('-----------------------')
-
-
+            console.log(
+                (i+1), '||',
+                //parseInt(related_search_i.page_y.toFixed(0)), '||',
+                related_search_i.inner_text,
+            );
         });
+
+
+
+
+
+
+
 
         console.log(result_obj);
 
