@@ -249,3 +249,8 @@ Google SERP JSON structure
 ## Participant Management
 Participant will be able to sync data to the server if the
 `yasbil_user_status` user meta field is not equal to the string `DISABLED`.
+
+
+
+## Extension Development (Important Files)
+- shared: constants and functions shared used by both content scripts and background scripts

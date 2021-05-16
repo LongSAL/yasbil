@@ -5,7 +5,6 @@
  * Time: 10:23 AM CDT
  */
 
-import * as util from './yasbil_00_utils.js';
 import * as db from './yasbil_00_db.js';
 
 $(document).ready(function()
@@ -37,13 +36,13 @@ $(document).ready(function()
 
             {//start
                 data: null, render: function (data, type, row) {
-                    return util.yasbil_milli_to_str(row['session_start_ts'])
+                    return yasbil_milli_to_str(row['session_start_ts'])
                 }
             },
 
             {//end
                 data: null, render: function (data, type, row) {
-                    return util.yasbil_milli_to_str(row['session_end_ts'])
+                    return yasbil_milli_to_str(row['session_end_ts'])
                 }
             },
 
@@ -72,7 +71,7 @@ $(document).ready(function()
                 data: null, render: function (data, type, row) {
                     return `
                         <small>
-                        ${util.yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
                         </small>
                     `;
                 }
@@ -124,7 +123,7 @@ $(document).ready(function()
             },
             {//time
                 data: null, render: function (data, type, row) {
-                    return util.yasbil_milli_to_str(row['pv_ts'])
+                    return yasbil_milli_to_str(row['pv_ts'])
                 }
             },
 
@@ -190,7 +189,7 @@ $(document).ready(function()
                 data: null, render: function (data, type, row) {
                     return `
                         <small>
-                        ${util.yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
                         </small>
                     `;
                 }
@@ -217,7 +216,7 @@ $(document).ready(function()
                 },
                 {//ts
                     data: null, render: function (data, type, row) {
-                        return util.yasbil_milli_to_str(row['m_ts'])
+                        return yasbil_milli_to_str(row['m_ts'])
                     }
                 },
                 {//url
@@ -295,7 +294,7 @@ $(document).ready(function()
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
-                        ${util.yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
                         </small>
                     `;
                     }
@@ -323,7 +322,7 @@ $(document).ready(function()
                 },
                 {//time
                     data: null, render: function (data, type, row) {
-                        return util.yasbil_milli_to_str(row['webnav_ts'])
+                        return yasbil_milli_to_str(row['webnav_ts'])
                     }
                 },
                 {//url
@@ -365,7 +364,7 @@ $(document).ready(function()
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
-                        ${util.yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
                         </small>
                     `;
                     }

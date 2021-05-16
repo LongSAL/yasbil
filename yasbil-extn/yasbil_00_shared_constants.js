@@ -4,13 +4,13 @@
  * Date: 2021-05-14
  * Time: 09:45 AM CDT
  *
- * Util functions that do not depend on DB
+ * All constants
  */
 
 
 
 // database table names
-export const DEXIE_DB_TABLES = {
+const DEXIE_DB_TABLES = {
     yasbil_sessions: 'session_guid,sync_ts',
     yasbil_session_pagevisits: 'pv_guid,sync_ts',
     yasbil_session_mouse: 'm_guid,sync_ts',
@@ -20,7 +20,7 @@ export const DEXIE_DB_TABLES = {
     //yasbil_session_framevisits: 'fv_guid',
 }
 
-export const ARR_TABLES_SYNC_INFO = [{
+const ARR_TABLES_SYNC_INFO = [{
     name: 'yasbil_sessions',
     pk: 'session_guid',
     api_endpoint: '/sync_table',
@@ -44,7 +44,7 @@ export const ARR_TABLES_SYNC_INFO = [{
 ];
 
 // name of search engine; hostname pattern; search query param name
-export const ARR_SEARCH_ENGINES = [
+const ARR_SEARCH_ENGINES = [
     { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q' },
     { se_name: 'GOOGLE', host: 'google.', url_param: 'q' },
     { se_name: 'YOUTUBE', host: 'youtube.', url_param: 'search_query' },
@@ -63,12 +63,12 @@ export const ARR_SEARCH_ENGINES = [
 ];
 
 // "common" search url params
-export const ARR_COMMON_SEARCH_URL_PARAMS = [
+const ARR_COMMON_SEARCH_URL_PARAMS = [
     'q', 'query', 'k', 'search', 'search_query',
 ];
 
 // list of hostname patterns to not track
-export const ARR_URL_BLOCKLIST = [
+const ARR_URL_BLOCKLIST = [
     'mail.', //captures all email websites (hopefully?)
     'accounts.google', // Google accounts
     'outlook.', //outlook Mail
@@ -85,12 +85,22 @@ export const ARR_URL_BLOCKLIST = [
 ];
 
 //------------ sync constants -------------
-export const API_NAMESPACE = `/wp-json/yasbil/v2_0_0`;
-export const CHECK_CONNECTION_ENDPOINT = '/check_connection';
+const API_NAMESPACE = `/wp-json/yasbil/v2_0_0`;
+const CHECK_CONNECTION_ENDPOINT = '/check_connection';
 
 
+//----- content script logging constants -------------
+//log mouse move after x milliseconds (// NOTE: (Huang+, CHI'11)'s method not working)
+// const MOVE_LOG_THRESH = 1000;
 
+// log hover events only if greater than x milliseconds
+const HOVER_DUR_THRESH = 100; // as low a number, more like mousemove; original: 500 1`0;
+// const HOVER_LOG_THRESH = 1000;
 
+// log scroll events only if amount scrolled is
+// greater than x% of page width or page height
+const SCROLL_Y_THRESH = 1;
+const SCROLL_X_THRESH = 1;
 
 
 

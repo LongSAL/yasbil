@@ -9,12 +9,12 @@
  *
  */
 import Dexie from './dexie.mjs';
-import * as constant from './yasbil_00_constants.js';
-import * as util from './yasbil_00_utils.js';
+// import * as constant from './yasbil_00_constants.js';
+// import * as util from './yasbil_00_utils.js';
 
 const db = new Dexie("yasbil_db");
 
-db.version(1).stores(constant.DEXIE_DB_TABLES);
+db.version(1).stores(DEXIE_DB_TABLES);
 
 db.open().then(async function (db) {
     update_sync_data_msg();
@@ -53,7 +53,7 @@ export async function select_all(table_name)
 export async function end_session()
 {
     await db.yasbil_sessions.update(
-        util.get_session_guid(), {session_end_ts: new Date().getTime()}
+        get_session_guid(), {session_end_ts: new Date().getTime()}
     ).catch(function(error)
     {
         console.log("Session End DB Error: " + error);
@@ -75,11 +75,11 @@ export async function do_sync_job()
 
     try
     {
-        util.set_sync_status('ON');
-        util.set_sync_result('PROGRESS');
+        set_sync_status('ON');
+        set_sync_result('PROGRESS');
 
         // ---------- STEP 1: check login credential ----------
-        util.set_sync_progress_msg('Verifying sync credentials...');
+        set_sync_progress_msg('Verifying sync credentials...');
         let check_result = await yasbil_verify_settings();
         if(!check_result.ok)
         {
@@ -90,13 +90,13 @@ export async function do_sync_job()
         }
 
         // ---------- STEP 2: syncing tables one by one ----------
-        util.set_sync_result('PROGRESS');
+        set_sync_result('PROGRESS');
 
-        for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+        for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
         {
-            let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+            let tbl = ARR_TABLES_SYNC_INFO[i];
 
-            util.set_sync_progress_msg(`Now Syncing ${tbl.nice_name}`);
+            set_sync_progress_msg(`Now Syncing ${tbl.nice_name}`);
 
             let sync_result = await sync_table_data(tbl.name, tbl.pk, tbl.api_endpoint);
 
@@ -116,23 +116,23 @@ export async function do_sync_job()
 
 
         // ---------- if all ends well ----------
-        util.set_sync_result('SUCCESS');
-        util.set_sync_progress_msg(`All data synced successfully.`);
-        util.update_sync_data_msg();
+        set_sync_result('SUCCESS');
+        set_sync_progress_msg(`All data synced successfully.`);
+        update_sync_data_msg();
     }
     catch (err)
     {
-        util.set_sync_result('ERROR');
-        util.set_sync_progress_msg(err.toString());
+        set_sync_result('ERROR');
+        set_sync_progress_msg(err.toString());
     }
     finally
     {
         // let user see sync message for 10 seconds before retrying sync
-        await util.sleep(10000);
-        util.set_sync_status('OFF');
+        await sleep(10000);
+        set_sync_status('OFF');
         //init/default condition of sync (for better UX - display of message)
-        util.set_sync_result('INIT');
-        util.set_sync_progress_msg('Initializing...');
+        set_sync_result('INIT');
+        set_sync_progress_msg('Initializing...');
     }
 }
 
@@ -205,7 +205,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
         const num_rows_sent = table_data.length;
 
         // --------- STEP 2: setting up POST request ---------
-        const settings = util.yasbil_get_settings();
+        const settings = yasbil_get_settings();
         const basic_auth = btoa(settings.USER + ':' + settings.PASS);
 
         const myHeaders = new Headers();
@@ -226,7 +226,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
             redirect: 'follow'
         };
 
-        const req_url = settings.URL + constant.API_NAMESPACE + api_endpoint;
+        const req_url = settings.URL + API_NAMESPACE + api_endpoint;
 
 
         // --------- STEP 3: making request and parsing response ---------
@@ -241,7 +241,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
 
         const response = await fetch(req_url, req_options)
         const txt_resp = await response.text();
-        const json_resp = util.checkJSON(txt_resp);
+        const json_resp = checkJSON(txt_resp);
 
         if(!json_resp)
             throw new Error(`Error syncing ${table_name}: Invalid JSON returned: ${txt_resp}`);
@@ -289,9 +289,9 @@ export async function update_sync_data_msg()
         `<i> Turn on logging and browse the internet to record data.</i>`;
     let row_counts_html = "<p class='text-end' style='width: 80%'>";
 
-    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
     {
-        const tbl = constant.ARR_TABLES_SYNC_INFO[i];
+        const tbl = ARR_TABLES_SYNC_INFO[i];
 
         const row_count = await db.table(tbl.name)
             .where('sync_ts')
@@ -310,19 +310,17 @@ export async function update_sync_data_msg()
         "---------------------------" +
         "</p>";
 
-    // util.set_sync_rows_tot(n_tot);
-
-    util.set_sync_rows_tot(n_tot);
+    set_sync_rows_tot(n_tot);
 
     if(n_tot > 0)
     {
-        if(util.get_sync_status() === "OFF")
+        if(get_sync_status() === "OFF")
             sync_msg = `Data ready to sync:<br/><br/>${row_counts_html}`;
         else
             sync_msg = `Data being synced:<br/><br/>${row_counts_html}`;
     }
 
-    util.set_sync_data_msg(sync_msg);
+    set_sync_data_msg(sync_msg);
 }
 
 
@@ -335,9 +333,9 @@ async function __reset_sync_ts()
     // sets sync_ts = 0 in all tables
     // idea: can be synced to a backup WP server with plugin installed
 
-    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
     {
-        let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+        let tbl = ARR_TABLES_SYNC_INFO[i];
 
         let n_rows = await db.table(tbl.name)
             .where('sync_ts').notEqual(0)
@@ -357,9 +355,9 @@ async function __del_synced_data()
     const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
     const oneWeekAgo = Date.now() - DEL_THRESH;
 
-    for (let i = 0; i < constant.ARR_TABLES_SYNC_INFO.length; i++)
+    for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
     {
-        let tbl = constant.ARR_TABLES_SYNC_INFO[i];
+        let tbl = ARR_TABLES_SYNC_INFO[i];
 
         //change str to int
         // db.table(tbl.name).toCollection().modify(row => {

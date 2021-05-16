@@ -5,11 +5,9 @@
  * Time: 12:36 AM
  */
 
-import * as util from './yasbil_00_utils.js';
-
 $(document).ready(function()
 {
-    let settings = util.yasbil_get_settings();
+    let settings = yasbil_get_settings();
 
     $('input[name=wp_url]').val(settings.URL);
     $('input[name=wp_user]').val(settings.USER);
@@ -51,14 +49,14 @@ $(document).ready(function()
         let alert_class = 'alert-success';
         let msg = '';
 
-        util.yasbil_save_settings(
+        yasbil_save_settings(
             $('input[name=wp_url]').val().trim().replace(/\/+$/g, ''),
             $('input[name=wp_user]').val().trim(),
             $('input[name=wp_app_pass]').val().trim()
         );
 
 
-        util.yasbil_verify_settings().then(check_result =>
+        yasbil_verify_settings().then(check_result =>
         {
             if(!check_result.ok)
             {

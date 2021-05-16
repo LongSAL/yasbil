@@ -5,8 +5,6 @@
  * Time: 07:10 PM CDT
  */
 
-import * as util from './yasbil_00_utils.js';
-
 //-------------------- Establish Connection with BG Script -----------------
 // cs = content script
 // bg = background script
@@ -18,7 +16,7 @@ $(document).ready(function()
 {
     refreshPopupElements();
 
-    const yasbil_settings = util.yasbil_get_settings();
+    const yasbil_settings = yasbil_get_settings();
     const yasbil_wp_link = yasbil_settings.URL + '/wp-admin/admin.php?page=yasbil_wp';
 
     $('a#yasbil_wpl_url').attr("href", yasbil_wp_link);
@@ -26,7 +24,7 @@ $(document).ready(function()
     $('#logToggle').change(function() //yasbil toggle change label
     {
         // double-checking: no active sync job
-        if(util.get_sync_status() === "OFF")
+        if(get_sync_status() === "OFF")
         {
             if(this.checked) // logging session start (not syncing)
             {
@@ -53,7 +51,7 @@ $(document).ready(function()
 
                 setLogOFF();
                 $('div#log_controls').show();
-                if(util.get_sync_rows_tot() > 0)
+                if(get_sync_rows_tot() > 0)
                     $('div#sync_controls').show();
                 else
                     $('div#sync_controls').hide();
@@ -66,7 +64,7 @@ $(document).ready(function()
     $('button#do_sync').click(function ()
     {
         // double-checking: no active logging session
-        if(util.get_session_guid() === "0")
+        if(get_session_guid() === "0")
         {
             portPopupToBG.postMessage({yasbil_msg: "DO_SYNC"});
             setLogOFF();
@@ -104,7 +102,7 @@ function setLogOFF(set_prop = true)
 // ---------------------- refreshSyncProgress ----------------------
 function refreshSyncProgress()
 {
-    const sync_result = util.get_sync_result();
+    const sync_result = get_sync_result();
 
     let elAlert = $('div#sync_progress');
     let elProgBar = $('div#sync_progressbar');
@@ -138,10 +136,10 @@ function refreshSyncProgress()
 // called every one second
 function refreshPopupElements()
 {
-    $('#sync_data_msg').html(util.get_sync_data_msg());
-    $('p#sync_progress_msg').html(util.get_sync_progress_msg());
+    $('#sync_data_msg').html(get_sync_data_msg());
+    $('p#sync_progress_msg').html(get_sync_progress_msg());
 
-    const extn_state = util.get_extn_state();
+    const extn_state = get_extn_state();
 
     const is_logging = extn_state.is_logging ;
     const is_syncing = extn_state.is_syncing;
@@ -157,7 +155,7 @@ function refreshPopupElements()
 
         setLogOFF();
         $('div#log_controls').show();
-        if(util.get_sync_rows_tot() > 0)
+        if(get_sync_rows_tot() > 0)
             $('div#sync_controls').show();
         else
             $('div#sync_controls').hide();

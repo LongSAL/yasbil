@@ -12,7 +12,11 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["yasbil_content_script.js"]
+      "js": [
+        "yasbil_00_shared_constants.js",
+        "yasbil_00_shared_functions.js",
+        "yasbil_content_script.js"
+      ]
     }
   ],
 

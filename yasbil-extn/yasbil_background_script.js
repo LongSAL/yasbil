@@ -6,14 +6,13 @@
  */
 
 
-import * as constant from './yasbil_00_constants.js';
-import * as util from './yasbil_00_utils.js';
+
 import * as db from './yasbil_00_db.js';
 
 // initial state of browser extension: false
 console.log('Initializing YASBIL extn');
-util.set_session_guid("0");
-util.set_sync_status("OFF");
+set_session_guid("0");
+set_sync_status("OFF");
 
 
 
@@ -31,7 +30,7 @@ function listener_runtime_onConnect(p)
         // console.log(`YASBIL_MSG = ${yasbil_msg}`);
         // console.log(m);
 
-        const extn_state = util.get_extn_state();
+        const extn_state = get_extn_state();
 
         const is_logging = extn_state.is_logging ;
         const is_syncing = extn_state.is_syncing;
@@ -84,7 +83,7 @@ function listener_runtime_onConnect(p)
 //-------------------- Start (YASBIL) Logging Session -----------------
 async function log_start() //tabInfo)
 {
-    const session_guid = util.uuidv4();
+    const session_guid = uuidv4();
 
     const platform_info = await browser.runtime.getPlatformInfo();
 
@@ -119,7 +118,7 @@ async function log_start() //tabInfo)
         true
     );
 
-    util.set_session_guid(session_guid);
+    set_session_guid(session_guid);
 
     //***** add listeneres --> start logging ********
     // 1a. log "normal" page visits
@@ -182,7 +181,7 @@ async function log_end()
     browser.webNavigation.onHistoryStateUpdated.removeListener(listener_webNav_onHistUpd);
 
     // start the database update
-    let session_guid = util.get_session_guid();
+    let session_guid = get_session_guid();
 
     if(session_guid && session_guid.length > 1)
     {
@@ -196,7 +195,7 @@ async function log_end()
 
 
         // Success - the data is updated!
-        util.set_session_guid("0");
+        set_session_guid("0");
 
         db.update_sync_data_msg();
 
@@ -371,11 +370,11 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
     const tabInfo = await browser.tabs.get(tabId);
 
     // do no track certain blocked domains (e.g. gmail, about:, etc)
-    if(!util.is_tracking_allowed(tabInfo.url))
+    if(!is_tracking_allowed(tabInfo.url))
         return;
 
     //identify popular search engines and get search query from URL
-    const se_info = util.get_search_engine_info(tabInfo.url);
+    const se_info = get_search_engine_info(tabInfo.url);
 
     const url = new URL(tabInfo.url);
 
@@ -413,12 +412,12 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 
     const data_row = {
         pv_event: e_name,
-        pv_guid: util.uuidv4(),
-        session_guid: util.get_session_guid(),
+        pv_guid: uuidv4(),
+        session_guid: get_session_guid(),
         win_id: tabInfo.windowId,
-        win_guid: util.get_win_guid(tabInfo.windowId),
+        win_guid: get_win_guid(tabInfo.windowId),
         tab_id: tabId,
-        tab_guid: util.get_tab_guid(tabId),
+        tab_guid: get_tab_guid(tabId),
         tab_width: tabInfo.width,
         tab_height: tabInfo.height ,
 
@@ -453,18 +452,18 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
-    if(!util.is_tracking_allowed(tabInfo.url))
+    if(!is_tracking_allowed(tabInfo.url))
         return;
 
     // console.log(yasbil_ev_data);
 
     const data_row = {
-        m_guid: util.uuidv4(),
-        session_guid: util.get_session_guid(),
+        m_guid: uuidv4(),
+        session_guid: get_session_guid(),
         win_id: tabInfo.windowId,
-        win_guid: util.get_win_guid(tabInfo.windowId),
+        win_guid: get_win_guid(tabInfo.windowId),
         tab_id: tabInfo.id,
-        tab_guid: util.get_tab_guid(tabInfo.id),
+        tab_guid: get_tab_guid(tabInfo.id),
 
         m_event: yasbil_ev_data.e_name,
         m_url: tabInfo.url,
@@ -516,16 +515,16 @@ function log_webnav(
 )
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
-    if(!util.is_tracking_allowed(p_webnav_url))
+    if(!is_tracking_allowed(p_webnav_url))
         return;
 
     // console.log(yasbil_ev_data);
 
     const data_row = {
-        webnav_guid: util.uuidv4(),
-        session_guid: util.get_session_guid(),
+        webnav_guid: uuidv4(),
+        session_guid: get_session_guid(),
         tab_id: p_tab_id,
-        tab_guid: util.get_tab_guid(p_tab_id),
+        tab_guid: get_tab_guid(p_tab_id),
 
         webnav_event: p_webnav_event,
         webnav_ts: p_webnav_ts,
