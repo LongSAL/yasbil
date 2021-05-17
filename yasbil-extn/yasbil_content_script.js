@@ -291,90 +291,127 @@ function main()
     {
         // https://scraperbox.com/blog/how-to-scrape-google-search-results-with-python
 
+        //array of objects to store the boxes/ client rects in the serp
+        // box / rect can be of the following types
+        // - 'DOCUMENT
+        // - 'MAIN_SEARCH_RESULT'
+        // - 'NESTED_SEARCH_RESULT'
+        // - 'RELATED_SEARCHES'
+        // - 'PEOPLE_ALSO_ASK'
+        // - 'PEOPLE_ALSO_SEARCH'
+        // order by page_y, page_x to sort of "recreate page
+        // to get parent of nested element:
+        // - parent x1 <= child x1, child x2 <= parent x2
+        // - parent y1 <= child y1, child y2 <= parent y2
+        const serp_elements = [
+            {
+                type: 'DOCUMENT',
+                ...get_bb_details(document.documentElement)
+            }
+        ];
+
+        // MAIN_SEARCH_RESULT (blue links)
+        // selector: '#search .g h3'
+        // selector title: '.g h3' | selector snippet: '.g .IsZvec'
+        // e.g. any search
+        // TODO: check calculator, weather, etc.
+
+
+
         const result_obj = {
             // main search results (blue links)
-            // #search .g h3
-            // title: .g h3; snippet: .g .IsZvec
+            // selector: '#search .g h3'
+            // selector title: '.g h3' | selector snippet: '.g .IsZvec'
+            // e.g. any search
+            // TODO: check calculator, weather, etc.
             search_results: [],
 
             //"related searches" (almost all webpages)
             //
             related_searches: [],
-            ppl_ask: [], // "people also ask" (e.g. "jquery document ready")
-            ppl_search: [] //"people also search"
+
+            // "people also ask"
+            // selector: '.related-question-pair'
+            // e.g. "jquery document ready" , "weather"
+            ppl_ask: [],
+
+            //"people also search" (example?)
+            ppl_search: []
 
         }
 
         // ----------- main search results -----------
         console.log('----------- main search results -----------');
-        document.querySelectorAll('.g').forEach(function(e, i)
+        document.querySelectorAll('.g').forEach(function(g, i)
         {
             try
             {
-                const bb_rect = e.getBoundingClientRect();
-
-                const search_result_i = {
-                    page_x: bb_rect.left + window.scrollX,
-                    page_y: bb_rect.top + window.scrollY,
-                    result_width: bb_rect.width,
-                    result_height: bb_rect.height,
-
-                    main_title: "",
-                    main_url: "",
-                    snippet: "",
-                    inner_text: e.innerText,
-                    inner_html: e.innerHTML,
-                    nested_results:[] // visible nested urls that are different from main url
-                };
-
-                //main_title and main_url (contained in .g h3)
-                const h3 = e.querySelector('h3')
-                if(h3)
+                // log div.g result only if does not belong to
+                // people also ask ('.related-question-pair')
+                // e.g. weather
+                if(g.querySelector('h3').innerText)
                 {
-                    search_result_i.main_title = h3.innerText;
+                    const search_result_i = {
+                        ...get_bb_details(g),
+                        main_title: "",
+                        main_url: "",
+                        snippet: "",
+                        inner_text: g.innerText,
+                        inner_html: g.innerHTML,
+                        nested_results:[] // visible nested urls that are different from main url
+                    };
 
-                    if(h3.closest('a'))
-                        search_result_i.main_url = h3.closest('a').href;
-                }
-
-                //snippet (contained in
-                if(e.querySelector('.IsZvec'))
-                    search_result_i.snippet = e.querySelector('.IsZvec').innerText;
-
-                // nested results
-                e.querySelectorAll('a').forEach(function(a, a_i)
-                {
-                    if(a.href !== search_result_i.main_url && is_visible(a))
+                    //main_title and main_url (contained in .g h3)
+                    const h3 = g.querySelector('h3')
+                    if(h3)
                     {
-                        search_result_i.nested_results.push({
-                            title: a.innerText,
-                            url: a.href
-                        });
+                        search_result_i.main_title = h3.innerText;
+
+                        // closest a may not be found for knowledge panels
+                        if(h3.closest('a'))
+                            search_result_i.main_url = h3.closest('a').href;
                     }
-                });
 
-                // add to array
-                result_obj.search_results.push(search_result_i);
+                    //snippet
+                    if(g.querySelector('.IsZvec'))
+                        search_result_i.snippet = g.querySelector('.IsZvec').innerText;
 
-                console.log(
-                    (i+1), '||',
-                    //parseInt(search_result_i.page_y.toFixed(0)), '||',
-                    search_result_i.main_url ? new URL(search_result_i.main_url).hostname : "", '||',
-                    search_result_i.main_title, '||',
-                    search_result_i.snippet.substr(0, 50),
-                );
+                    // nested results
+                    g.querySelectorAll('a').forEach(function(a, a_i)
+                    {
+                        if(a.href !== search_result_i.main_url && visible(a))
+                        {
+                            search_result_i.nested_results.push({
+                                title: a.innerText,
+                                url: a.href,
+                                ...get_bb_details(a),
+                            });
+                        }
+                    });
 
-                for(let elem of search_result_i.nested_results)
-                {
+                    // add to array
+                    result_obj.search_results.push(search_result_i);
+
                     console.log(
-                        '\t',
-                        elem.title, '||',
-                        elem.url ? new URL(elem.url).hostname : "",
+                        (i+1), '||',
+                        //parseInt(search_result_i.page_y.toFixed(0)), '||',
+                        search_result_i.main_url ? new URL(search_result_i.main_url).hostname : "", '||',
+                        search_result_i.main_title, '||',
+                        search_result_i.snippet.substr(0, 50),
                     );
+
+                    for(let elem of search_result_i.nested_results)
+                    {
+                        console.log(
+                            '\t',
+                            elem.title, '||',
+                            elem.url ? new URL(elem.url).hostname : "",
+                        );
+                    }
                 }
             }
-            catch (e) {
-                console.log(`Error: ${e.toString()}`);
+            catch (err) {
+                console.log(`Error: ${err.toString()}`);
             }
 
         });
@@ -416,19 +453,67 @@ function main()
 
 
 // ---------------------------------- utility functions ------------------------------------
-    function get_viewport_properties(){
+    function get_viewport_properties()
+    {
         return {
             // viewport properties
             zoom: window.devicePixelRatio,
-            page_w: document.documentElement.scrollWidth, //page width
-            page_h: document.documentElement.scrollHeight, //page height
-            page_scrolled_x: window.pageXOffset, //page horizontally scrolled
-            page_scrolled_y: window.pageYOffset, //page vertically scrolled
-            viewport_w: document.documentElement.clientWidth, //viewport width
-            viewport_h: document.documentElement.clientHeight, //viewport height
-            browser_w: window.outerWidth, //browser window width
-            browser_h: window.outerHeight, //browser window height
+            page_w: parseInt(document.documentElement.scrollWidth), //page width
+            page_h: parseInt(document.documentElement.scrollHeight), //page height
+            page_scrolled_x: parseInt(window.pageXOffset), //page horizontally scrolled
+            page_scrolled_y: parseInt(window.pageYOffset), //page vertically scrolled
+            viewport_w: parseInt(document.documentElement.clientWidth), //viewport width
+            viewport_h: parseInt(document.documentElement.clientHeight), //viewport height
+            browser_w: parseInt(window.outerWidth), //browser window width
+            browser_h: parseInt(window.outerHeight), //browser window height
         }
+    }
+
+    // get bounding box details
+    function get_bb_details(e)
+    {
+        const bb_rect = e.getBoundingClientRect();
+
+        // absolute bounding box (w.r.t. screen, for eye-tracker coordinates)
+        // experimental: https://stackoverflow.com/a/29370069
+        // will not work if dev toolbar or other window
+        // decreases viewport width from the bottom
+        const screen_x1 = window.screenX // window position relative to screen
+            + bb_rect.left;
+
+        const screen_y1 = window.screenY // window position relative to screen
+            + window.outerHeight - window.innerHeight // height of navigation/toolbar
+            +bb_rect.top;
+
+        const screen_x2 = screen_x1 + bb_rect.width;
+        const screen_y2 = screen_y1 + bb_rect.height;
+
+        const page_x1 = bb_rect.left + window.scrollX;
+        const page_y1 = bb_rect.top + window.scrollY;
+        const page_x2 = page_x1 + bb_rect.width;
+        const page_y2 = page_y1 + bb_rect.height;
+
+
+        return {
+            //relative to entire
+            page_x1: parseInt(page_x1),
+            page_y1: parseInt(page_y1),
+            page_x2: parseInt(page_x2),
+            page_y2: parseInt(page_y2),
+
+            // relative to screen
+            screen_x1: parseInt(screen_x1),
+            screen_y1: parseInt(screen_y1),
+            screen_x2: parseInt(screen_x2),
+            screen_y2: parseInt(screen_y2),
+        }
+    }
+
+    // whether HTML element is visbile
+    // https://stackoverflow.com/a/33456469
+    function visible(elem)
+    {
+        return !!( elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length );
     }
 
 

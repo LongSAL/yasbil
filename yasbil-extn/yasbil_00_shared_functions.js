@@ -315,12 +315,7 @@ function yasbil_milli_to_str(ms)
 }
 
 
-// whether HTML element is visbile
-// https://stackoverflow.com/a/33456469
-function is_visible(elem)
-{
-    return !!( elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length );
-}
+
 
 
 
