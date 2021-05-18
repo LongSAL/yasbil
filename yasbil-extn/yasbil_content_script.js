@@ -26,32 +26,31 @@
  *
  */
 
-function main()
+function main() { try
 {
-    console.log('hello');
 
-    const url = window.location.href;
 
-    if(!is_tracking_allowed(url))
+
+
+    if(!is_tracking_allowed(window.location.href))
         return;
-
-    const p_BG_interaction = browser.runtime.connect({name:"port-ba-popup-to-bg"});
-
-    const se_info = get_search_engine_info(window.location.href);
-    console.log(se_info);
-
-    scrape_serp();
 
     // for debouncing very rapidly firing events
     // using whatever keys as desired
-    const PREV_LOG ={
+    const PREV_LOG = {
         'ts_hover': new Date().getTime(),
         'ts_move': new Date().getTime(),
         'mouse_x': -1,
         'mouse_y': -1,
         'scroll_x': 0,
         'scroll_y': 0,
+        'scrape_arr': null,
     }
+
+    //------- start script --------
+    const p_BG_interaction = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+
+    scrape_serp(); //scrape serp on page load
 
     // -------------------- MOUSE event listeners --------------------
 
@@ -73,9 +72,11 @@ function main()
     });
 
     // ----------- left click -----------
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', async function(e) {
         cs_log_mouse_and_scroll('MOUSE_CLICK', e, e.target.closest('a'));
         //TODO: rescrape SERP (assuming: SERP is updated only with clicks)
+        await sleep(1000);
+        scrape_serp();
     });
 
     // ----------- right click -----------
@@ -83,12 +84,34 @@ function main()
         cs_log_mouse_and_scroll('MOUSE_RCLICK', e, e.target.closest('a'));
         //TODO: rescrape SERP (assuming: SERP is updated only with clicks)
         // maintain last scrape and compare?
+        scrape_serp();
     });
 
     // ----------- double click -----------
     document.addEventListener('dblclick', function(e) {
         cs_log_mouse_and_scroll('MOUSE_DBLCLICK', e, e.target.closest('a'));
     });
+
+    // --------- dom changes ----------------
+    // https://stackoverflow.com/a/45117612
+    // const dom_observer = new MutationObserver(function(mutation)
+    // {
+    //     // MutationRecord
+    //     //console.log(mutation);
+    //     // https://developer.mozilla.org/en-US/docs/Web/API/MutationRecord
+    //     console.log('mutation');
+    //     scrape_serp();
+    // });
+    // const m_container = document.querySelector('#search'); //document.documentElement || document.body;
+    // const m_config = {
+    //     childList:true,
+    //     subtree:true,
+    //     //attributes: true,
+    //     characterData: true
+    // };
+    // dom_observer.observe(m_container, m_config);
+
+
 
 
     // -------------------- SCROLL handler --------------------
@@ -122,6 +145,10 @@ function main()
     })
 
     //TODO: select text, clipboard events
+
+
+
+
 
 
     // -------------------- MOUSE and SCROLL handler --------------------
@@ -248,8 +275,12 @@ function main()
     // ----------------------- scrape SERPS --------------------
     function scrape_serp()
     {
+        const se_info = get_search_engine_info(window.location.href);
+
         if(!se_info.search_engine)
             return;
+
+        // let sendMsg = true;
 
         const msg_obj = {
             yasbil_msg: "LOG_SERP_SCRAPE",
@@ -259,29 +290,39 @@ function main()
 
                 search_engine: se_info.search_engine,
                 search_query: se_info.search_query,
+                serp_offset: se_info.serp_offset,
 
-                //TODO
-                serp_pg_no: se_info.serp_pg_no,
-
-                scraped_json_obj: null,
-
-
+                scraped_json_arr: null,
             }
         }
 
-        let scrape_obj = null;
+        let scrape_arr = [];
 
         switch (se_info.search_engine)
         {
             case "GOOGLE":
-                 scrape_obj = scrape_google_serp();
+                scrape_arr = scrape_google_serp();
                 break;
             case "BING":
                 break;
 
         }
 
-        msg_obj.yasbil_scrape_data.scraped_json_obj = scrape_obj;
+        if(
+            !PREV_LOG.scrape_arr //first time
+            ||
+            // SERP has loaded new content
+            !deepEqual(scrape_arr, PREV_LOG.scrape_arr)
+            //scrape_arr.length !== PREV_LOG.scrape_arr.length
+            //JSON.stringify(scrape_arr) !== JSON.stringify(PREV_LOG.scrape_arr)
+        )
+        {
+            console.log(scrape_arr);
+            msg_obj.yasbil_scrape_data.scraped_json_arr = scrape_arr;
+            PREV_LOG.scrape_arr = scrape_arr;
+
+            //send message
+        }
     }
 
 
@@ -293,14 +334,16 @@ function main()
 
         //array of objects to store the boxes/ client rects in the serp
         // box / rect can be of the following types
-        // - 'DOCUMENT
-        // - 'MAIN_SEARCH_RESULT'
-        // - 'NESTED_SEARCH_RESULT'
-        // - 'RELATED_SEARCHES'
-        // - 'PEOPLE_ALSO_ASK'
+        // - 'DOCUMENT' --> to get page details
+        // - 'MAIN_RESULT'
+        // - 'NESTED_RESULT'
+        // - 'RELATED_SEARCH'
+        // - 'PEOPLE_ASK_CLOSED'
+        // - 'PEOPLE_ASK_OPEN'
         // - 'PEOPLE_ALSO_SEARCH'
+        // - 'OTHER'
         // order by page_y, page_x to sort of "recreate page
-        // to get parent of nested element:
+        // to get parent / child of nested elements:
         // - parent x1 <= child x1, child x2 <= parent x2
         // - parent y1 <= child y1, child y2 <= parent y2
         const serp_elements = [
@@ -310,146 +353,175 @@ function main()
             }
         ];
 
+
         // MAIN_SEARCH_RESULT (blue links)
         // selector: '#search .g h3'
         // selector title: '.g h3' | selector snippet: '.g .IsZvec'
         // e.g. any search
         // TODO: check calculator, weather, etc.
 
+        // RELATED_SEARCH (almost all webpages)
+        // selector: '.s75CSd'
 
 
-        const result_obj = {
-            // main search results (blue links)
-            // selector: '#search .g h3'
-            // selector title: '.g h3' | selector snippet: '.g .IsZvec'
-            // e.g. any search
-            // TODO: check calculator, weather, etc.
-            search_results: [],
+        // "PEOPLE_ASK_CLOSED", "PEOPLE_ASK_OPEN"
+        // selector: '.related-question-pair'
+        // open accordions can be identified if element.innerText contains \n
+        // (as in CoNotate: https://github.com/creativecolab/CHI2021-CoNotate/blob/4243ed81a944d7429adbfa934873c10c005f1b39/ChromeExtension/src/mainContent.js#L267
+        // open / expanded accordions have additional g elements inside them
+        // RELATED_SEARCH_NESTED_RESULT
+        // selector '.g'
+        // e.g. "jquery document ready" , "weather"
 
-            //"related searches" (almost all webpages)
-            //
-            related_searches: [],
+        //"PEOPLE_ALSO_SEARCH" (example?)
 
-            // "people also ask"
-            // selector: '.related-question-pair'
-            // e.g. "jquery document ready" , "weather"
-            ppl_ask: [],
+        // 'KNOWLEDGE_PANEL'
+        // visible '.g h3' that does not have closest 'a'
 
-            //"people also search" (example?)
-            ppl_search: []
 
-        }
 
-        // ----------- main search results -----------
-        console.log('----------- main search results -----------');
-        document.querySelectorAll('.g').forEach(function(g, i)
+        // ----------- main search results ("ten blue links") -----------
+        document.querySelectorAll('.g').forEach(function(g, g_i)
         {
-            try
+            // log div.g result only if it contains h3
+            // otherwise it may not be primary blue link search result
+            // e.g. weather
+
+            const h3 = g.querySelector('h3')
+
+            // if there is h3 inside, then it is "blue link"
+            // visible h3 will have innerText as non-empty string
+            // hidden h3 is contained in "people also ask"
+            if(h3 && h3.innerText && h3.closest('a'))
             {
-                // log div.g result only if does not belong to
-                // people also ask ('.related-question-pair')
-                // e.g. weather
-                if(g.querySelector('h3').innerText)
+                const main_result = {
+                    type: 'MAIN_RESULT',
+                    index: g_i,
+                    result_title: h3.innerText,
+                    result_url: h3.closest('a').href,
+                    result_snippet: "",
+                    ...get_bb_details(g),
+                };
+
+                //snippet
+                if(g.querySelector('.IsZvec'))
+                    main_result.result_snippet = g.querySelector('.IsZvec').innerText;
+
+                // add to mother array
+                serp_elements.push(main_result);
+
+                // nested results inside this main result
+                g.querySelectorAll('a').forEach(function(a, a_i)
                 {
-                    const search_result_i = {
-                        ...get_bb_details(g),
-                        main_title: "",
-                        main_url: "",
-                        snippet: "",
-                        inner_text: g.innerText,
-                        inner_html: g.innerHTML,
-                        nested_results:[] // visible nested urls that are different from main url
-                    };
-
-                    //main_title and main_url (contained in .g h3)
-                    const h3 = g.querySelector('h3')
-                    if(h3)
+                    if(a.href !== main_result.result_url && visible(a))
                     {
-                        search_result_i.main_title = h3.innerText;
+                        const nested_result = {
+                            type: 'NESTED_RESULT',
+                            parent_index: g_i,
+                            result_title: a.innerText,
+                            index: a_i,
+                            result_url: a.href,
+                            ...get_bb_details(a),
+                        };
 
-                        // closest a may not be found for knowledge panels
-                        if(h3.closest('a'))
-                            search_result_i.main_url = h3.closest('a').href;
+                        serp_elements.push(nested_result);
                     }
-
-                    //snippet
-                    if(g.querySelector('.IsZvec'))
-                        search_result_i.snippet = g.querySelector('.IsZvec').innerText;
-
-                    // nested results
-                    g.querySelectorAll('a').forEach(function(a, a_i)
-                    {
-                        if(a.href !== search_result_i.main_url && visible(a))
-                        {
-                            search_result_i.nested_results.push({
-                                title: a.innerText,
-                                url: a.href,
-                                ...get_bb_details(a),
-                            });
-                        }
-                    });
-
-                    // add to array
-                    result_obj.search_results.push(search_result_i);
-
-                    console.log(
-                        (i+1), '||',
-                        //parseInt(search_result_i.page_y.toFixed(0)), '||',
-                        search_result_i.main_url ? new URL(search_result_i.main_url).hostname : "", '||',
-                        search_result_i.main_title, '||',
-                        search_result_i.snippet.substr(0, 50),
-                    );
-
-                    for(let elem of search_result_i.nested_results)
-                    {
-                        console.log(
-                            '\t',
-                            elem.title, '||',
-                            elem.url ? new URL(elem.url).hostname : "",
-                        );
-                    }
+                });
+            }
+            else if(g_i.innerText)
+            {
+                const other_result = {
+                    type: 'OTHER',
+                    index: g_i,
+                    ...get_bb_details(g),
                 }
-            }
-            catch (err) {
-                console.log(`Error: ${err.toString()}`);
-            }
 
+                serp_elements.push(other_result);
+            }
         });
 
 
-        // ----------- related searches -----------
-        console.log('----------- related searches -----------');
+
+        // ----------- suggestion: related search  -----------
         document.querySelectorAll('.s75CSd').forEach(function(e, i)
         {
-            const related_search_i = {
-                'page_y': e.getBoundingClientRect().top + window.scrollY,
-                'page_x': e.getBoundingClientRect().left + window.scrollX,
-                'url': e.closest('a').href,
-                'inner_text': e.innerText, //contains the related search query
-                'inner_html': e.innerHTML,
+            const related_search = {
+                type: 'RELATED_SEARCH',
+                index: i,
+                query_suggestion: e.innerText, //related search query
+                result_url: e.closest('a') ? e.closest('a').href : "",
+                ...get_bb_details(e),
             };
 
             // add to array
-            result_obj.related_searches.push(related_search_i);
+            serp_elements.push(related_search);
 
-            console.log(
-                (i+1), '||',
-                //parseInt(related_search_i.page_y.toFixed(0)), '||',
-                related_search_i.inner_text,
-            );
         });
 
 
 
+        // ----------- suggestion: people also ask  -----------
+        document.querySelectorAll('.related-question-pair').forEach(function(e, i)
+        {
+            // whether the "people also ask" accordion is open (expanded)
+            // to show details, or closed
+            const loc_newline = e.innerText.indexOf('\n');
+
+            // closed
+            if(loc_newline < 0)
+            {
+                const people_ask_closed = {
+                    type: 'PEOPLE_ASK_CLOSED',
+                    index: i,
+                    query_suggestion: e.innerText,
+                    ...get_bb_details(e),
+                };
+
+                serp_elements.push(people_ask_closed);
+            }
+            else // open
+            {
+                const people_ask_open = {
+                    type: 'PEOPLE_ASK_OPEN',
+                    index: i,
+                    query_suggestion: e.innerText.substring(0, loc_newline),
+                    answer_snippet: e.innerText.substring(loc_newline + 1),
+                    answer_title: "",
+                    answer_url: "",
+                    ...get_bb_details(e),
+                };
+
+                // answer title
+                const g_h3 = e.querySelector('.g h3');
+                if(g_h3)
+                    people_ask_open.answer_title = g_h3.answer_title;
+
+                const g_h3_a = g_h3.closest('a');
+                if(g_h3_a)
+                    people_ask_open.answer_url = g_h3_a.href;
+
+                serp_elements.push(people_ask_open);
+            }
+        });
 
 
+        serp_elements.sort(function (a, b)
+        {
+            //order by y, x
+            if(a.page_y1 === b.page_y1)
+                return a.page_x1 - b.page_x1;
+            else
+                return a.page_y1 - b.page_y1;
+        })
 
+        // console.log(serp_elements);
 
-
-        console.log(result_obj);
-
-        return result_obj;
+        return serp_elements;
     }
+
+
+
+
 
 
 // ---------------------------------- utility functions ------------------------------------
@@ -468,6 +540,8 @@ function main()
             browser_h: parseInt(window.outerHeight), //browser window height
         }
     }
+
+
 
     // get bounding box details
     function get_bb_details(e)
@@ -506,6 +580,10 @@ function main()
             screen_y1: parseInt(screen_y1),
             screen_x2: parseInt(screen_x2),
             screen_y2: parseInt(screen_y2),
+
+            //innerText and innerHTML
+            inner_text: e.innerText,
+            inner_html: e.innerHTML,
         }
     }
 
@@ -516,7 +594,12 @@ function main()
         return !!( elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length );
     }
 
-
+}
+catch (err){
+    err.stack();
+    console.trace();
+    //console.log(`Error: ${err.toString()}`);
+}
 } //main()
 
 // calling the main function

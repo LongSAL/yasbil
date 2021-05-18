@@ -43,23 +43,31 @@ const ARR_TABLES_SYNC_INFO = [{
 },
 ];
 
-// name of search engine; hostname pattern; search query param name
+// name of search engine;
+// hostname pattern;
+// search query param name;
+// SERP pg param name (offset)
 const ARR_SEARCH_ENGINES = [
-    { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', url_param: 'q'},
-    { se_name: 'GOOGLE', host: 'google.', url_param: 'q' },
-    { se_name: 'YOUTUBE', host: 'youtube.', url_param: 'search_query' },
-    { se_name: 'BING', host: 'bing.', url_param: 'q' },
-    { se_name: 'DUCKDUCKGO', host: 'duckduckgo.', url_param: 'q' },
-    { se_name: 'AMAZON', host: 'amazon.', url_param: 'k' },
-    { se_name: 'WIKIPEDIA', host: 'wikipedia.', url_param: 'search' },
-    { se_name: 'EBAY', host: 'ebay.', url_param: '_nkw' },
-    { se_name: 'BAIDU', host: 'baidu.', url_param: 'wd' },
-    { se_name: 'YANDEX', host: 'yandex.', url_param: 'text' },
-    { se_name: 'YAHOO', host: 'yahoo.', url_param: 'p' },
-    { se_name: 'FLIPKART', host: 'flipkart.', url_param: 'q' },
-    { se_name: 'NAVER', host: 'naver.', url_param: 'query' }, //south korea
-    { se_name: 'SEZNAM', host: 'seznam.', url_param: 'q' }, //Czech Republic
-    // TODO: others? WebMD etc.?
+    { se_name: 'GOOGLE SCHOLAR', host: 'scholar.google.', qry: 'q',     pg: ''},
+    { se_name: 'GOOGLE',    host: 'google.',    qry: 'q',   pg: 'start' },
+    { se_name: 'YOUTUBE',   host: 'youtube.',   qry: 'search_query', pg: '' },
+    { se_name: 'BING',      host: 'bing.',      qry: 'q',       pg: 'first' },
+    { se_name: 'DUCKDUCKGO',host: 'duckduckgo.', qry: 'q',      pg: '' },
+    { se_name: 'YAHOO',     host: 'yahoo.',     qry: 'p',       pg: '' },
+
+
+    { se_name: 'AMAZON',    host: 'amazon.',    qry: 'k',       pg: '' },
+    { se_name: 'WIKIPEDIA', host: 'wikipedia.', qry: 'search',  pg: '' },
+    { se_name: 'EBAY',      host: 'ebay.',      qry: '_nkw',    pg: '' },
+
+    // TODO: others? WebMD etc.? UT Library
+
+    { se_name: 'BAIDU',     host: 'baidu.',     qry: 'wd',      pg: '' },
+    { se_name: 'YANDEX',    host: 'yandex.',    qry: 'text',    pg: '' },
+
+    { se_name: 'FLIPKART',  host: 'flipkart.',  qry: 'q',       pg: '' },
+    { se_name: 'NAVER',     host: 'naver.',     qry: 'query',   pg: '' }, //south korea
+    { se_name: 'SEZNAM',    host: 'seznam.',    qry: 'q',       pg: '' }, //Czech Republic
 ];
 
 // "common" search url params

@@ -57,17 +57,21 @@ function get_tab_guid(p_tab_id)
 
 //-------------------- get_search_engine_info -----------------
 // tries to identify search engine and search query from URL
+// serp_offset == 0 --> first page of SERP
 function get_search_engine_info(p_url_str)
 {
-    const res = {search_engine: '', search_query: '', serp_pg_no: 1};
+    const res = {search_engine: '', search_query: '', serp_offset: 0};
     const a = new URL(p_url_str);
 
     for(let se_item of ARR_SEARCH_ENGINES)
     {
-        if(a.hostname.includes(se_item.host) && a.searchParams.get(se_item.url_param))
+        if(a.hostname.includes(se_item.host) && a.searchParams.get(se_item.qry))
         {
             res.search_engine = se_item.se_name;
-            res.search_query = a.searchParams.get(se_item.url_param);
+            res.search_query = a.searchParams.get(se_item.qry);
+
+            if(a.searchParams.get(se_item.pg))
+                res.serp_offset = a.searchParams.get(se_item.pg);
 
             break;
         }
@@ -314,7 +318,15 @@ function yasbil_milli_to_str(ms)
         .replace('T', ' ');
 }
 
-
+// ----------- deep compare 2 objects ------------
+// https://stackoverflow.com/a/32922084
+function deepEqual(x, y) {
+    const ok = Object.keys, tx = typeof x, ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (
+        ok(x).length === ok(y).length &&
+        ok(x).every(key => deepEqual(x[key], y[key]))
+    ) : (x === y);
+}
 
 
 

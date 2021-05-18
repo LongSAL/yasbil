@@ -216,14 +216,10 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`scrape_url`|url of the page|
 |`search_engine`|name of search engine (currently only GOOGLE)|
 |`search_query`|search query, extracted from URL parameter|
-|`serp_pg_no`|page number of search results, extracted from URL parameter|
+|`serp_offset`|rank of the first result in this SERP; if 0, --> first page of SERP; >0 --> not the first page|
 |--------------|--------------|
-|`scraped_json_obj`|stringified JSON object; details below|
+|`scraped_json_arr`|stringified JSON array of object; details below|
 |--------------|--------------|
-|`scrape_rel_srch`|scraped contents of "related searches"; JSON array of objects, stringified|
-|`scrape_ppl_ask`|scraped contents of "people also ask"; JSON array stringified|
-|`scrape_ppl_srch`|scraped contents of "people also search"; JSON array stringified|
---------------|--------------|
 |`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
 |`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
 |`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
@@ -237,15 +233,58 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 
 
-Google SERP JSON structure
+Google SERP JSON object types (all have boundig box details, and inner_text, inner_html)
 ```
 {
-    search_results: [], //array of main search results (blue links)
-    related_searches: [], //"related searches"
-    ppl_ask: [], //"people also ask"
-    ppl_search: [] //"people also search"
+    type: 'DOCUMENT',
 }
+
+{
+    type: 'MAIN_RESULT',
+    index: location in array (maybe non continuous, due to hidden elements),
+    result_title: title of the result,
+    result_url: url of the result,
+    result_snippet: result snippet,
+}
+
+{
+    type: 'NESTED_RESULT',
+    index: location in array (maybe non continuous, due to hidden elements),
+    parent_index: index of parent MAIN_RESULT,
+    result_title:
+    result_url: url of result,
+}
+
+{
+    type: 'RELATED_SEARCH',
+    index: i,
+    query_suggestion: suggested search query
+    result_url: e.closest('a') ? e.closest('a').href : "",
+
+}
+
+{
+    type: 'PEOPLE_ASK_CLOSED',
+    index: i,
+    query_suggestion: suggested search query (complete question)
+}
+
+{
+    type: 'PEOPLE_ASK_OPEN', --> shows detailed info from one result
+    index: i,
+    query_suggestion: suggested search query (complete question)
+    answer_snippet: answer to the query,
+    answer_title: title of the answer snippet source,
+    answer_url: url of the answer snippet source,
+}
+
+{
+    type: 'OTHER', --> knowledge panels or other stuff not "blue link"
+    index: i
+}
+
 ```
+
 
 
 
