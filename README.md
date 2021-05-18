@@ -1,8 +1,8 @@
 # YASBIL: Yet Another Search Behaviour (and) Interaction Logger
 
 ## Download Links:
-* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-1.0.0.xpi) (v 1.0.0) tested with Firefox
-* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp.zip) (for researcher only) to be installed in central data repository
+* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-1.0.0.xpi) v 1.0.0 (for researchers) tested with Firefox
+* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp.zip) (for researchers) to be installed in central data repository
 
 
 
