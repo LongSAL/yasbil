@@ -102,7 +102,12 @@ const API_NAMESPACE = `/wp-json/yasbil/v2_0_0`;
 const CHECK_CONNECTION_ENDPOINT = '/check_connection';
 
 
-//----- content script logging constants -------------
+//----- logging constants / thresholds -------------
+
+// if multiple pagevisit webnavigation events occur within this timeperiod (ms)
+// the last one is recorded
+const PAGEVISIT_LOG_THRESH = 5000;
+
 //log mouse move after x milliseconds (// NOTE: (Huang+, CHI'11)'s method not working)
 // const MOVE_LOG_THRESH = 1000;
 
@@ -115,8 +120,17 @@ const HOVER_DUR_THRESH = 100; // as low a number, more like mousemove; original:
 const SCROLL_Y_THRESH = 1;
 const SCROLL_X_THRESH = 1;
 
-
-
+// removes the following tags from htmlstring
+// to reduce character length, assuming these do not
+// contribute to the "content" of the page
+// for scraping / parsing after-the-fact
+const DELETE_TAGS =[
+    'script',
+    'style',
+    'svg',
+    'link',
+    'img[src^="data:"]', //base64 images (unecessarily increases HTML size)
+];
 
 
 

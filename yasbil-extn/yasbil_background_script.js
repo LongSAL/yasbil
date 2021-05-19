@@ -415,12 +415,13 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
     // = result of the script running in every injected frame
     const page_text = await browser.tabs.executeScript(
         tabId,
-        {code: 'document.body.innerText;'}
+        {code: 'document.documentElement.innerText;'}
     );
 
     const page_html = await browser.tabs.executeScript(
         tabId,
-        {code: 'document.body.innerHTML;'}
+        //outer HTML gets entire HTML
+        {code: 'document.documentElement.outerHTML;'}
     );
 
     //TODO: get opengraph tags
@@ -444,7 +445,7 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         pv_transition_type: transition_typ.toUpperCase(),
 
         pv_page_text: page_text[0], // taking the first element
-        pv_page_html: page_html[0],
+        pv_page_html: compress_html_string(page_html[0]+''),
 
         //TODO: opengraph tags
 
@@ -524,8 +525,6 @@ function log_serp(yasbil_serp_data, tabInfo)
         if(!is_tracking_allowed(tabInfo.url))
             return;
 
-        // console.log(yasbil_ev_data);
-
         const data_row = {
             serp_guid: uuidv4(),
             session_guid: get_session_guid(),
@@ -554,9 +553,9 @@ function log_serp(yasbil_serp_data, tabInfo)
             sync_ts: 0,
         };
 
-        console.log(data_row);
-
         db.insert_row('yasbil_session_serp', data_row);
+
+        //console.log(yasbil_serp_data.scraped_json_arr);
     }
     catch (err)
     {

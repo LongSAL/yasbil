@@ -173,10 +173,10 @@ function main() { try
             target_width = 0, target_height = 0
         ;
 
-        if(e.target) //possibly not true for SCROLL
+        if(e.target && e.target.innerText) //possibly not true for SCROLL
         {
             target_text = e.target.innerText+'';
-            target_html = e.target.innerHTML;
+            target_html = compress_html_string(e.target.innerHTML+'');
 
             const bb_rect = e.target.getBoundingClientRect();
             target_width = bb_rect.width;
@@ -307,7 +307,7 @@ function main() { try
             !PREV_LOG.scrape_arr //first time
             ||
             // SERP has loaded new content
-            !deepEqual(scrape_arr, PREV_LOG.scrape_arr)
+            !object_equals(scrape_arr, PREV_LOG.scrape_arr)
             //scrape_arr.length !== PREV_LOG.scrape_arr.length
             //JSON.stringify(scrape_arr) !== JSON.stringify(PREV_LOG.scrape_arr)
         )
@@ -596,7 +596,7 @@ function main() { try
 
             //innerText and innerHTML
             inner_text: dump_innerT ? e.innerText : "",
-            inner_html: dump_innerH ? e.innerHTML : "",
+            inner_html: dump_innerH ? compress_html_string(e.innerHTML) : "",
         }
     }
 

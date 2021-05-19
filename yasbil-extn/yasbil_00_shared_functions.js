@@ -319,12 +319,15 @@ function yasbil_milli_to_str(ms)
             .toISOString()
             .replace('T', ' ');
     }
-    catch (e) {
-        return "Error: " + e.toString();
+    catch (e)
+    {
+        e.stack();
+        console.trace();
+        return "";
     }
 }
 
-// return yyyymmdd_hhmmss
+// ----------- return yyyymmdd_hhmmss -----------
 function get_timestamp_for_filename()
 {
     try
@@ -336,43 +339,133 @@ function get_timestamp_for_filename()
             .replaceAll(':','') // "20210519T004102"
             .replaceAll('T','_') // "20210519_004102"
     }
-    catch (e) {
-        return "Error: " + e.toString();
+    catch (e)
+    {
+        e.stack();
+        console.trace();
+        return "";
     }
 }
 
+
+// ------------ get_file_size -----------
 // takes number of characters and
 // returns KB / MB / GB
 function get_file_size(num_chars)
 {
-    const _KB = 1024;
-    const _MB = _KB * 1024;
-    const _GB = _MB * 1024;
+    try
+    {
+        const _KB = 1024;
+        const _MB = _KB * 1024;
+        const _GB = _MB * 1024;
 
-    let res = num_chars;
+        let res = num_chars;
 
-    if(num_chars >= _GB)
-        res = (num_chars / _GB).toFixed(1) + 'GB';
-    else if(num_chars >= _MB)
-        res = (num_chars / _MB).toFixed(1) + 'MB';
-    else
-        res = (num_chars / _KB).toFixed(1) + 'KB'
+        if(num_chars >= _GB)
+            res = (num_chars / _GB).toFixed(1) + 'GB';
+        else if(num_chars >= _MB)
+            res = (num_chars / _MB).toFixed(1) + 'MB';
+        else
+            res = (num_chars / _KB).toFixed(1) + 'KB'
 
-    return res;
-
+        return res;
+    }
+    catch (e)
+    {
+        e.stack();
+        console.trace();
+        return "";
+    }
 }
+
+// ----------- compress_html_string -----------
+function compress_html_string(p_html_str)
+{
+    try
+    {
+        const el = document.createElement('template');
+        el.innerHTML = p_html_str;
+
+        for(let tag of DELETE_TAGS)
+        {
+            el.querySelectorAll(tag).forEach(function(e)
+            {
+                e.remove();
+            });
+        }
+
+        let result = el.innerHTML;
+        result = result.replace(/^\s+|\r\n|\n|\r|(>)\s+(<)|\s+$/gm, '$1$2');
+        result = result.replaceAll("  ", " ").replaceAll("  ", " ");
+
+        return result;
+    }
+    catch (e)
+    {
+        e.stack();
+        console.trace();
+        return "";
+    }
+}
+
 
 // ----------- deep compare 2 objects ------------
 // https://stackoverflow.com/a/32922084
-function deepEqual(x, y) {
-    const ok = Object.keys, tx = typeof x, ty = typeof y;
-    return x && y && tx === 'object' && tx === ty ? (
-        ok(x).length === ok(y).length &&
-        ok(x).every(key => deepEqual(x[key], y[key]))
-    ) : (x === y);
+// function deepEqual(x, y)
+// {
+//     try
+//     {
+//         const ok = Object.keys, tx = typeof x, ty = typeof y;
+//         return x && y && tx === 'object' && tx === ty ? (
+//             ok(x).length === ok(y).length &&
+//             ok(x).every(key => deepEqual(x[key], y[key]))
+//         ) : (x === y);
+//     }
+//     catch (e)
+//     {
+//         e.stack();
+//         console.trace();
+//         return "";
+//     }
+// }
+
+
+//https://stackoverflow.com/a/6713782
+function object_equals( x, y ) {
+    if ( x === y ) return true;
+    // if both x and y are null or undefined and exactly the same
+
+    if ( ! ( x instanceof Object ) || ! ( y instanceof Object ) ) return false;
+    // if they are not strictly equal, they both need to be Objects
+
+    if ( x.constructor !== y.constructor ) return false;
+    // they must have the exact same prototype chain, the closest we can do is
+    // test there constructor.
+
+    for ( let p in x ) {
+        if ( ! x.hasOwnProperty( p ) ) continue;
+        // other properties were tested using x.constructor === y.constructor
+
+        if ( ! y.hasOwnProperty( p ) ) return false;
+        // allows to compare x[ p ] and y[ p ] when set to undefined
+
+        if ( x[ p ] === y[ p ] ) continue;
+        // if they have the same strict value or identity then they are equal
+
+        if ( typeof( x[ p ] ) !== "object" ) return false;
+        // Numbers, Strings, Functions, Booleans must be strictly equal
+
+        if ( ! object_equals( x[ p ],  y[ p ] ) ) return false;
+        // Objects and Arrays must be tested recursively
+    }
+
+    for ( let p in y )
+        if ( y.hasOwnProperty( p ) && ! x.hasOwnProperty( p ) )
+            return false;
+    // allows x[ p ] to be set to undefined
+
+    return true;
 }
-
-
 
 
 

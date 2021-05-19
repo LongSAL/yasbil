@@ -302,7 +302,7 @@ $(document).ready(async function()
 
 
 
-                {
+                {// dimensions
                     width: '15%',
                     data: null, render: function (data, type, row) {
                         return `
@@ -318,18 +318,18 @@ $(document).ready(async function()
                     }
                 },
 
-                {
+                {// locations
                     width: '20%',
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
-                        Pointer: 
+                        Mouse: 
                         ${row['mouse_x']} 
                         (${(row['mouse_x']/row['page_w']*100).toFixed(0)}%), 
                         ${row['mouse_y']}
                         (${(row['mouse_y']/row['page_h']*100).toFixed(0)}%)
                         <br/>
-                        Scrolled: ${row['page_scrolled_y']}
+                        Viewport: ${row['page_scrolled_y']}
                         (${(row['page_scrolled_y']/row['page_h']*100).toFixed(0)}%)
                         to
                         ${row['page_scrolled_y']+row['viewport_h']}
@@ -339,11 +339,16 @@ $(document).ready(async function()
                     }
                 },
 
-                {
+                {// event tagret
                     data: null, render: function (data, type, row) {
                         return `
                         <small>
-                        ${row['target_text'].substr(0, 70)}...
+                        ${row['target_text'].substr(0, 50)}
+                        
+                        <br/>
+                        Text: ${(row['target_text'].length/1000).toFixed(1)}k 
+                        |
+                        HTML: ${(row['target_html'].length/1000).toFixed(1)}k
                         </small>
                         `;
                     }
@@ -360,6 +365,8 @@ $(document).ready(async function()
                 },
             ]
         });
+
+
 
 
     $('#yasbil_session_serp').dataTable(
@@ -459,6 +466,8 @@ $(document).ready(async function()
                 },
             ]
         });
+
+
 
 
     $('#yasbil_session_webnav').dataTable(
