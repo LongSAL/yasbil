@@ -15,35 +15,69 @@ $(document).ready(async function()
     // https://stackoverflow.com/a/52297652
     $('#export_json').click(async function ()
     {
-        // since this operation takes time
-        // hide the button for preventing multiple clicks
-        $(this).hide();
-
-        const json_export = {};
-        for(let tbl of ARR_TABLES_SYNC_INFO)
+        try
         {
-            const tbl_name = tbl.name;
-            const tbl_data = await db.select_all(tbl_name);
-            json_export[tbl_name] = tbl_data;
+            // since this operation takes time
+            // hide the button for preventing multiple clicks
+            $(this).hide();
+
+            const json_export = {};
+            for(let tbl of ARR_TABLES_SYNC_INFO)
+            {
+                const tbl_name = tbl.name;
+                const tbl_data = await db.select_all(tbl_name);
+                json_export[tbl_name] = tbl_data;
+            }
+
+            const ts = get_timestamp_for_filename();
+            const filename_prefix = `yasbil_data_${ts}`;
+            const json_filename = filename_prefix + '.json';
+
+
+            /*const zip_filename = filename_prefix + '.zip';
+
+            const json_string = JSON.stringify(json_export);
+
+            console.log('zip start');
+
+            //------ zipping ----------
+            //https://github.com/photopea/UZIP.js
+            //https://github.com/101arrowz/fflate
+
+            const buf = fflate.strToU8(json_string);
+
+            const zip_Uint8Array = fflate.zipSync(buf, { level: 9 }); //returns Uint8Array
+
+            const zip_base64 = btoa(new TextDecoder().decode(zip_Uint8Array));
+
+
+            console.log('zip end');*/
+
+
+
+            let element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(json_string));
+            element.setAttribute('download', json_filename);
+
+            // element.setAttribute('href', 'data:text/plain;base64,' + encodeURIComponent(zip_base64));
+            // element.setAttribute('download', zip_filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+
+            // after exporting done, show the button again
+            $(this).show();
         }
-
-        const ts = get_timestamp_for_filename();
-        const filename = `yasbil_local_data_export_${ts}.json`;
-        const jsonStr = JSON.stringify(json_export);
-
-        let element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr));
-        element.setAttribute('download', filename);
-
-        element.style.display = 'none';
-        document.body.appendChild(element);
-
-        element.click();
-
-        document.body.removeChild(element);
-
-        // after exporting done, show the button again
-        $(this).show();
+        catch (e)
+        {
+            e.stack();
+            console.trace();
+            return "";
+        }
     });
 
 

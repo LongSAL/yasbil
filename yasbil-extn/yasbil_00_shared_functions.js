@@ -319,10 +319,9 @@ function yasbil_milli_to_str(ms)
             .toISOString()
             .replace('T', ' ');
     }
-    catch (e)
+    catch (err)
     {
-        e.stack();
-        console.trace();
+        console.error(err);
         return "";
     }
 }
@@ -370,10 +369,9 @@ function get_file_size(num_chars)
 
         return res;
     }
-    catch (e)
+    catch (err)
     {
-        e.stack();
-        console.trace();
+        console.error(err);
         return "";
     }
 }
@@ -383,14 +381,26 @@ function compress_html_string(p_html_str)
 {
     try
     {
-        const el = document.createElement('template');
+        // removes the following tags from htmlstring
+        // to reduce character length, assuming these do not
+        // contribute to the "content" of the page
+        // for scraping / parsing after-the-fact
+        const DELETE_TAGS =[
+            'script',
+            'style',
+            'svg',
+            'link',
+            'img[src^="data:"]', //base64 images (unecessarily increases HTML size)
+            'template',
+        ];
+
+        const el = document.createElement('html');
         el.innerHTML = p_html_str;
 
         for(let tag of DELETE_TAGS)
         {
-            el.querySelectorAll(tag).forEach(function(e)
-            {
-                e.remove();
+            el.querySelectorAll(tag).forEach(function(item, index){
+                item.parentNode.removeChild(item);
             });
         }
 
@@ -398,16 +408,24 @@ function compress_html_string(p_html_str)
         result = result.replace(/^\s+|\r\n|\n|\r|(>)\s+(<)|\s+$/gm, '$1$2');
         result = result.replaceAll("  ", " ").replaceAll("  ", " ");
 
+        if(p_html_str.length/1000 > 100)
+        {
+            console.log(
+              'orig: ', p_html_str.length/1000, 'k ',
+              'comp: ', result.length/1000, 'k ',
+            );
+        }
+
         return result;
     }
-    catch (e)
+    catch (err)
     {
-        e.stack();
-        console.trace();
+        console.error(err);
         return "";
     }
 }
 
+// compress_html_string(document.documentElement.outerHTML)
 
 // ----------- deep compare 2 objects ------------
 // https://stackoverflow.com/a/32922084
@@ -421,10 +439,9 @@ function compress_html_string(p_html_str)
 //             ok(x).every(key => deepEqual(x[key], y[key]))
 //         ) : (x === y);
 //     }
-//     catch (e)
+//     catch (err)
 //     {
-//         e.stack();
-//         console.trace();
+//         console.error(err)
 //         return "";
 //     }
 // }

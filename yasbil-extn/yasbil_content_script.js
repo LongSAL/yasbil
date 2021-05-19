@@ -609,9 +609,7 @@ function main() { try
 
 }
 catch (err){
-    err.stack();
-    console.trace();
-    //console.log(`Error: ${err.toString()}`);
+    console.error(err);
 }
 } //main()
 

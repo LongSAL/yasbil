@@ -208,7 +208,8 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
 
-
+Zip request?
+https://stuk.github.io/jszip/
 
 - Google SERP JSON object types, contained in `scraped_json_arr`
 ```
@@ -293,6 +294,40 @@ In addition to the properties above, all objects have contain the following comm
 }
 
 ```
+
+--------
+### `yasbil_session_largestring`
+- stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
+- to save space, string guid can be used across sessions
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`string_id`|server only; PK; auto-increment|
+|`string_guid`|PK in client|
+|`string_body`|body of the string|
+|--------------|--------------|
+|`sync_ts`| initial = 0; later popl with ts from MySQL response|
+
+
+|`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
+|--------------|--------------|
+|`string_ts`|timestamp of capturing the String|
+|`string_url`|url of the page from which string was captured|
+|`string_type`|`innerHTML` / `innerText`|
+
+
+- db.get_string_locator(string)
+- db.get_string(string_locator)
+
+- locator can be `guid` or `guid|start_index|end_index`, if current string is an exact substring of an already existing string (can happen a lot for innerText and innerHTML)
+
+
 
 ----------
 

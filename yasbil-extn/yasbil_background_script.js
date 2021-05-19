@@ -88,8 +88,7 @@ function listener_runtime_onConnect(p)
         }
         catch (err)
         {
-            err.stack();
-            console.trace();
+            console.error(err);
         }
     });
 }
@@ -346,7 +345,7 @@ function listener_tabs_onActivated(details)
 
 //-------------------- log YouTube like webpage visits? -----------------
 // event docs: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated
-function listener_webNav_onHistUpd(details)
+async function listener_webNav_onHistUpd(details)
 {
     // console.log('webNavigation.onHistoryStateUpdated');
     // note:
@@ -356,6 +355,11 @@ function listener_webNav_onHistUpd(details)
 
     if(details.frameId === 0)
     {
+        // HTML may not have been updated when
+        // onHistoryStateUpdated is fired
+
+        await sleep(DELAY_AFTER_HIST_UPD);
+
         log_pagevisits(
             details.tabId,
             details.timeStamp,
@@ -559,8 +563,7 @@ function log_serp(yasbil_serp_data, tabInfo)
     }
     catch (err)
     {
-        err.stack();
-        console.trace();
+        console.error(err);
     }
 }
 

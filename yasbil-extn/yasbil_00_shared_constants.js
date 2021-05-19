@@ -16,6 +16,7 @@ const DEXIE_DB_TABLES = {
     yasbil_session_mouse: 'm_guid,sync_ts',
     yasbil_session_webnav: 'webnav_guid,sync_ts',
     yasbil_session_serp: 'serp_guid,sync_ts',
+    // yasbil_session_largestring: 'string_guid,string_body,sync_ts'
     //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 }
@@ -46,6 +47,12 @@ const ARR_TABLES_SYNC_INFO = [{
     api_endpoint: '/sync_table',
     nice_name: 'SERPs'
 },
+//     {
+//     name: 'yasbil_session_largestring',
+//     pk: 'string_guid',
+//     api_endpoint: '/sync_table',
+//     nice_name: 'Text Content'
+// },
 ];
 
 // name of search engine;
@@ -104,9 +111,19 @@ const CHECK_CONNECTION_ENDPOINT = '/check_connection';
 
 //----- logging constants / thresholds -------------
 
+//throttling: occurring every x seconds
+//debouncing: waiting for x seconds after the last event and then taking the last second
+
+// debounce by property: https://stackoverflow.com/a/28795512
+
 // if multiple pagevisit webnavigation events occur within this timeperiod (ms)
-// the last one is recorded
+// from the same URL, the last one is recorded
+// in other words
 const PAGEVISIT_LOG_THRESH = 5000;
+
+
+const DELAY_AFTER_HIST_UPD = 2000;
+
 
 //log mouse move after x milliseconds (// NOTE: (Huang+, CHI'11)'s method not working)
 // const MOVE_LOG_THRESH = 1000;
@@ -120,17 +137,8 @@ const HOVER_DUR_THRESH = 100; // as low a number, more like mousemove; original:
 const SCROLL_Y_THRESH = 1;
 const SCROLL_X_THRESH = 1;
 
-// removes the following tags from htmlstring
-// to reduce character length, assuming these do not
-// contribute to the "content" of the page
-// for scraping / parsing after-the-fact
-const DELETE_TAGS =[
-    'script',
-    'style',
-    'svg',
-    'link',
-    'img[src^="data:"]', //base64 images (unecessarily increases HTML size)
-];
+
+
 
 
 
