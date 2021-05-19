@@ -285,6 +285,7 @@ async function sync_table_data(table_name, pk, api_endpoint)
 export async function update_sync_data_msg()
 {
     let n_tot = 0;
+    let size_tot = 0;
     let sync_msg = //`<i>No data available to sync.</i>` +
         `<i> Turn on logging and browse the internet to record data.</i>`;
     let row_counts_html = "<p class='text-end' style='width: 80%'>";
@@ -293,20 +294,28 @@ export async function update_sync_data_msg()
     {
         const tbl = ARR_TABLES_SYNC_INFO[i];
 
-        const row_count = await db.table(tbl.name)
+        const arr_tbl = await db.table(tbl.name)
             .where('sync_ts')
             .equals(0)
-            .count();
+            .toArray()
+            //.count()
+        ;
+
+        const row_count = arr_tbl.length;
+        const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
 
         n_tot += row_count;
+        size_tot += tbl_size;
 
         row_counts_html = row_counts_html +
-            `${tbl.nice_name}: <b>${row_count}</b> rows <br/>`;
+            `${tbl.nice_name}: <b>${row_count}</b> rows (${get_file_size(tbl_size)}) 
+            <br/>
+            `;
     }
 
     row_counts_html = row_counts_html +
         "---------------------------<br/>" +
-        "Total: <b>" + n_tot + "</b> rows <br/>" +
+        `Total: <b> ${n_tot} </b> rows (${get_file_size(size_tot)}) <br/>` +
         "---------------------------" +
         "</p>";
 

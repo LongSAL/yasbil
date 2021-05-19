@@ -28,10 +28,6 @@
 
 function main() { try
 {
-
-
-
-
     if(!is_tracking_allowed(window.location.href))
         return;
 
@@ -74,17 +70,19 @@ function main() { try
     // ----------- left click -----------
     document.addEventListener('click', async function(e) {
         cs_log_mouse_and_scroll('MOUSE_CLICK', e, e.target.closest('a'));
-        //TODO: rescrape SERP (assuming: SERP is updated only with clicks)
-        await sleep(1000);
-        scrape_serp();
+
+        // rescrape SERP after waiting 1 sec
+        // assuming: SERP is updated with clicks
+        scrape_serp(1000);
     });
 
     // ----------- right click -----------
     document.addEventListener('contextmenu', function(e) {
         cs_log_mouse_and_scroll('MOUSE_RCLICK', e, e.target.closest('a'));
-        //TODO: rescrape SERP (assuming: SERP is updated only with clicks)
-        // maintain last scrape and compare?
-        scrape_serp();
+
+        // rescrape SERP after waiting 1 sec
+        // assuming: SERP is updated with clicks
+        scrape_serp(1000);
     });
 
     // ----------- double click -----------
@@ -154,7 +152,8 @@ function main() { try
     // -------------------- MOUSE and SCROLL handler --------------------
     // single function to log all mouse interaction events from content script (cs)
     function cs_log_mouse_and_scroll(
-        e_name, e,
+        e_name,
+        e, //event; NOT element
         closest_a = null,
         hover_dur= 0,
         scroll_x_delta= 0,
@@ -174,13 +173,12 @@ function main() { try
             target_width = 0, target_height = 0
         ;
 
-
-        if(e.hasOwnProperty('target')) //possibly not true for SCROLL
+        if(e.target) //possibly not true for SCROLL
         {
             target_text = e.target.innerText+'';
             target_html = e.target.innerHTML;
 
-            const bb_rect = e.getBoundingClientRect();
+            const bb_rect = e.target.getBoundingClientRect();
             target_width = bb_rect.width;
             target_height = bb_rect.height;
 
@@ -191,6 +189,9 @@ function main() { try
                     break
                 el = el.parentElement;
             }
+
+            //console.log(target_text);
+            // console.log(dom_path_arr.join('|'));
         }
 
         // constant data for all mouse interaction events
@@ -273,28 +274,18 @@ function main() { try
 
 
     // ----------------------- scrape SERPS --------------------
-    function scrape_serp()
+    async function scrape_serp(sleep_ms=0)
     {
         const se_info = get_search_engine_info(window.location.href);
 
         if(!se_info.search_engine)
             return;
 
+        // debounce
+        if(sleep_ms > 0)
+            await sleep(sleep_ms);
+
         // let sendMsg = true;
-
-        const msg_obj = {
-            yasbil_msg: "LOG_SERP_SCRAPE",
-            yasbil_scrape_data: {
-                scrape_ts: new Date().getTime(),
-                ...get_viewport_properties(),
-
-                search_engine: se_info.search_engine,
-                search_query: se_info.search_query,
-                serp_offset: se_info.serp_offset,
-
-                scraped_json_arr: null,
-            }
-        }
 
         let scrape_arr = [];
 
@@ -308,6 +299,10 @@ function main() { try
 
         }
 
+        if(scrape_arr.length < 1)
+            return;
+
+        // debouncing
         if(
             !PREV_LOG.scrape_arr //first time
             ||
@@ -317,11 +312,26 @@ function main() { try
             //JSON.stringify(scrape_arr) !== JSON.stringify(PREV_LOG.scrape_arr)
         )
         {
-            console.log(scrape_arr);
-            msg_obj.yasbil_scrape_data.scraped_json_arr = scrape_arr;
+            const msg_obj = {
+                yasbil_msg: "LOG_SERP",
+                yasbil_serp_data: {
+                    serp_ts: new Date().getTime(),
+                    serp_url: window.location.href,
+                    search_engine: se_info.search_engine,
+                    search_query: se_info.search_query,
+                    serp_offset: se_info.serp_offset,
+
+                    scraped_json_arr: scrape_arr,
+
+                    ...get_viewport_properties(),
+                }
+            }
+
             PREV_LOG.scrape_arr = scrape_arr;
 
             //send message
+            p_BG_interaction.postMessage(msg_obj);
+            //console.log(msg_obj);
         }
     }
 
@@ -349,7 +359,10 @@ function main() { try
         const serp_elements = [
             {
                 type: 'DOCUMENT',
-                ...get_bb_details(document.documentElement)
+                //dont dump innerhtml for entire document repeatedly
+                // already available in pagevisits (somewhat)
+                // saves size
+                ...get_bb_details(document.documentElement, true, false)
             }
         ];
 
@@ -505,14 +518,14 @@ function main() { try
         });
 
 
-        serp_elements.sort(function (a, b)
-        {
-            //order by y, x
-            if(a.page_y1 === b.page_y1)
-                return a.page_x1 - b.page_x1;
-            else
-                return a.page_y1 - b.page_y1;
-        })
+        // serp_elements.sort(function (a, b)
+        // {
+        //     //order by y, x
+        //     if(a.page_y1 === b.page_y1)
+        //         return a.page_x1 - b.page_x1;
+        //     else
+        //         return a.page_y1 - b.page_y1;
+        // })
 
         // console.log(serp_elements);
 
@@ -532,19 +545,19 @@ function main() { try
             zoom: window.devicePixelRatio,
             page_w: parseInt(document.documentElement.scrollWidth), //page width
             page_h: parseInt(document.documentElement.scrollHeight), //page height
-            page_scrolled_x: parseInt(window.pageXOffset), //page horizontally scrolled
-            page_scrolled_y: parseInt(window.pageYOffset), //page vertically scrolled
             viewport_w: parseInt(document.documentElement.clientWidth), //viewport width
             viewport_h: parseInt(document.documentElement.clientHeight), //viewport height
             browser_w: parseInt(window.outerWidth), //browser window width
             browser_h: parseInt(window.outerHeight), //browser window height
+            page_scrolled_x: parseInt(window.pageXOffset), //page horizontally scrolled
+            page_scrolled_y: parseInt(window.pageYOffset), //page vertically scrolled
         }
     }
 
 
 
     // get bounding box details
-    function get_bb_details(e)
+    function get_bb_details(e, dump_innerT=true, dump_innerH=true)
     {
         const bb_rect = e.getBoundingClientRect();
 
@@ -582,8 +595,8 @@ function main() { try
             screen_y2: parseInt(screen_y2),
 
             //innerText and innerHTML
-            inner_text: e.innerText,
-            inner_html: e.innerHTML,
+            inner_text: dump_innerT ? e.innerText : "",
+            inner_html: dump_innerH ? e.innerHTML : "",
         }
     }
 

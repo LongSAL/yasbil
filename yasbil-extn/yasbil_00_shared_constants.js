@@ -15,7 +15,7 @@ const DEXIE_DB_TABLES = {
     yasbil_session_pagevisits: 'pv_guid,sync_ts',
     yasbil_session_mouse: 'm_guid,sync_ts',
     yasbil_session_webnav: 'webnav_guid,sync_ts',
-    yasbil_session_serp_scrape: 'scrape_guid,sync_ts',
+    yasbil_session_serp: 'serp_guid,sync_ts',
     //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 }
@@ -40,6 +40,11 @@ const ARR_TABLES_SYNC_INFO = [{
     pk: 'webnav_guid',
     api_endpoint: '/sync_table',
     nice_name: 'Web Events'
+}, {
+    name: 'yasbil_session_serp',
+    pk: 'serp_guid',
+    api_endpoint: '/sync_table',
+    nice_name: 'SERPs'
 },
 ];
 

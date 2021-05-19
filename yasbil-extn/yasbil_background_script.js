@@ -26,56 +26,71 @@ function listener_runtime_onConnect(p)
     // https://stackoverflow.com/a/40991056
     p.onMessage.addListener(async function(m, sendingPort)
     {
-        const yasbil_msg = m.yasbil_msg;
-        // console.log(`YASBIL_MSG = ${yasbil_msg}`);
-        // console.log(m);
-
-        const extn_state = get_extn_state();
-
-        const is_logging = extn_state.is_logging ;
-        const is_syncing = extn_state.is_syncing;
-
-        // ----- NOT logging; NOT syncing -----
-        if(!is_logging && !is_syncing)
+        try
         {
-            if(yasbil_msg === "LOG_START")
-            {
-                await log_start(); //sendingPort.sender.tab);
-            }
-            else if(yasbil_msg === "DO_SYNC")
-            {
-                db.do_sync_job();
-            }
-            else if(yasbil_msg === "__RESET_SYNC_TS")
-            {
-                // call from front-end by:
-                // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
-                //__reset_sync_ts();
-            }
-        }
-        // ----- logging; NOT syncing -----
-        else if(is_logging && !is_syncing)
-        {
-            if (yasbil_msg === "LOG_MOUSE_AND_SCROLL")
-            {
-                log_mouse_and_scroll(
-                    m.yasbil_ev_data,
-                    sendingPort.sender.tab,
-                    sendingPort.url
-                ); //don't await (?) to let it run in BG?
-            }
-            else if (yasbil_msg === "LOG_END")
-            {
-                await log_end();
-            }
-        }
-        // ----- syncing; NOT logging -----
-        else if(!is_logging && is_syncing)
-        {
-            //what message can arise here?
-        }
-        // ----- 4th situation logging AND syncing NOT allowed -----
+            const yasbil_msg = m.yasbil_msg;
+            // console.log(`YASBIL_MSG = ${yasbil_msg}`);
+            // console.log(m);
 
+            const extn_state = get_extn_state();
+
+            const is_logging = extn_state.is_logging ;
+            const is_syncing = extn_state.is_syncing;
+
+            // ----- NOT logging; NOT syncing -----
+            if(!is_logging && !is_syncing)
+            {
+                if(yasbil_msg === "LOG_START")
+                {
+                    await log_start(); //sendingPort.sender.tab);
+                }
+                else if(yasbil_msg === "DO_SYNC")
+                {
+                    db.do_sync_job();
+                }
+                else if(yasbil_msg === "__RESET_SYNC_TS")
+                {
+                    // call from front-end by:
+                    // portToBG.postMessage({yasbil_msg: "__RESET_SYNC_TS"});
+                    //__reset_sync_ts();
+                }
+            }
+            // ----- logging; NOT syncing -----
+            else if(is_logging && !is_syncing)
+            {
+                if (yasbil_msg === "LOG_MOUSE_AND_SCROLL")
+                {
+                    log_mouse_and_scroll(
+                        m.yasbil_ev_data,
+                        sendingPort.sender.tab,
+                        sendingPort.url
+                    ); //don't await (?) to let it run in BG?
+                }
+                else if (yasbil_msg === "LOG_SERP")
+                {
+                    log_serp(
+                        m.yasbil_serp_data,
+                        sendingPort.sender.tab,
+                        sendingPort.url
+                    ); //don't await (?) to let it run in BG?
+                }
+                else if (yasbil_msg === "LOG_END")
+                {
+                    await log_end();
+                }
+            }
+            // ----- syncing; NOT logging -----
+            else if(!is_logging && is_syncing)
+            {
+                //what message can arise here?
+            }
+            // ----- 4th situation logging AND syncing NOT allowed -----
+        }
+        catch (err)
+        {
+            err.stack();
+            console.trace();
+        }
     });
 }
 
@@ -496,6 +511,59 @@ function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
 }
 
 
+
+
+
+
+// -------------------- log_serp --------------------
+function log_serp(yasbil_serp_data, tabInfo)
+{
+    try
+    {
+        // do no track certain blocked domains (e.g. gmail, about:, etc)
+        if(!is_tracking_allowed(tabInfo.url))
+            return;
+
+        // console.log(yasbil_ev_data);
+
+        const data_row = {
+            serp_guid: uuidv4(),
+            session_guid: get_session_guid(),
+            win_id: tabInfo.windowId,
+            win_guid: get_win_guid(tabInfo.windowId),
+            tab_id: tabInfo.id,
+            tab_guid: get_tab_guid(tabInfo.id),
+
+            serp_ts: yasbil_serp_data.serp_ts,
+            serp_url: yasbil_serp_data.serp_url,
+            search_engine: yasbil_serp_data.search_engine,
+            search_query: yasbil_serp_data.search_query,
+            serp_offset: yasbil_serp_data.serp_offset,
+
+            scraped_json_arr: yasbil_serp_data.scraped_json_arr,
+
+
+            zoom: yasbil_serp_data.zoom,
+            page_w: yasbil_serp_data.page_w,
+            page_h: yasbil_serp_data.page_h,
+            viewport_w: yasbil_serp_data.viewport_w,
+            viewport_h: yasbil_serp_data.viewport_h,
+            browser_w: yasbil_serp_data.browser_w,
+            browser_h: yasbil_serp_data.browser_h,
+
+            sync_ts: 0,
+        };
+
+        console.log(data_row);
+
+        db.insert_row('yasbil_session_serp', data_row);
+    }
+    catch (err)
+    {
+        err.stack();
+        console.trace();
+    }
+}
 
 
 

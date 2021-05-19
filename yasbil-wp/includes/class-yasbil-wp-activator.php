@@ -42,6 +42,7 @@ class YASBIL_WP_Activator
         $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
         $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
         $tbl_webnav = $wpdb->prefix . "yasbil_session_webnav";
+        $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
 
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -193,11 +194,52 @@ class YASBIL_WP_Activator
         ) $charset_collate;";
 
 
+        $sql_create_tbl_serp = "CREATE TABLE $tbl_serp (
+            serp_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            serp_guid varchar(50) NOT NULL,
+            session_guid varchar(50) NOT NULL,
+            project_id int(11) NULL DEFAULT NULL,
+            project_name varchar(50) NULL DEFAULT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
+            win_id int(11) NULL DEFAULT NULL,
+            win_guid varchar(50) NULL DEFAULT NULL,
+            tab_id int(11) NULL DEFAULT NULL,
+            tab_guid varchar(50) NULL DEFAULT NULL,
+            serp_ts bigint(20) unsigned NOT NULL,
+            serp_url varchar(500) NULL DEFAULT NULL,
+            search_engine varchar(50) NULL DEFAULT NULL,
+            search_query varchar(500) NULL DEFAULT NULL,
+            serp_offset int(11) NULL DEFAULT NULL,
+            scraped_json_arr longtext NULL DEFAULT NULL,
+            zoom float(10,4) NULL DEFAULT NULL,
+            page_w int(11) NULL DEFAULT NULL,
+            page_h int(11) NULL DEFAULT NULL,
+            viewport_w int(11) NULL DEFAULT NULL,
+            viewport_h int(11) NULL DEFAULT NULL,
+            browser_w int(11) NULL DEFAULT NULL,
+            browser_h int(11) NULL DEFAULT NULL,
+            page_scrolled_x int(11) NULL DEFAULT NULL,
+            page_scrolled_y int(11) NULL DEFAULT NULL,
+            sync_ts bigint(20) unsigned NOT NULL,            
+            PRIMARY KEY  (serp_id),
+            UNIQUE KEY serp_guid (serp_guid),
+            KEY session_guid (session_guid),
+            KEY project_id (project_id),
+            KEY project_name (project_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name),
+            KEY win_guid (win_guid),
+            KEY tab_guid (tab_guid)
+        ) $charset_collate;";
+
+
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         dbDelta( $sql_create_tbl_sessions );
         dbDelta( $sql_create_tbl_pagevisits );
         dbDelta( $sql_create_tbl_mouse );
         dbDelta( $sql_create_tbl_webnav );
+        dbDelta( $sql_create_tbl_serp );
 
         add_option( 'yasbil_wp_db_version', $yasbil_wp_db_version );
     }

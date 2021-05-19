@@ -310,12 +310,56 @@ function checkJSON(str) {
 // ------------ display unix timestamp in human readable format -----------
 function yasbil_milli_to_str(ms)
 {
-    if(ms === 0)
-        return "x";
+    try
+    {
+        if(ms === 0)
+            return "x";
 
-    return new Date(ms)
-        .toISOString()
-        .replace('T', ' ');
+        return new Date(ms)
+            .toISOString()
+            .replace('T', ' ');
+    }
+    catch (e) {
+        return "Error: " + e.toString();
+    }
+}
+
+// return yyyymmdd_hhmmss
+function get_timestamp_for_filename()
+{
+    try
+    {
+        return new Date()
+            .toISOString() // "2021-05-19T00:41:02.086Z"
+            .substring(0,19) // "2021-05-19T00:41:02"
+            .replaceAll('-','') // "20210519T00:41:02"
+            .replaceAll(':','') // "20210519T004102"
+            .replaceAll('T','_') // "20210519_004102"
+    }
+    catch (e) {
+        return "Error: " + e.toString();
+    }
+}
+
+// takes number of characters and
+// returns KB / MB / GB
+function get_file_size(num_chars)
+{
+    const _KB = 1024;
+    const _MB = _KB * 1024;
+    const _GB = _MB * 1024;
+
+    let res = num_chars;
+
+    if(num_chars >= _GB)
+        res = (num_chars / _GB).toFixed(1) + 'GB';
+    else if(num_chars >= _MB)
+        res = (num_chars / _MB).toFixed(1) + 'MB';
+    else
+        res = (num_chars / _KB).toFixed(1) + 'KB'
+
+    return res;
+
 }
 
 // ----------- deep compare 2 objects ------------

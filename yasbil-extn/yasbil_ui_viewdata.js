@@ -7,14 +7,59 @@
 
 import * as db from './yasbil_00_db.js';
 
-$(document).ready(function()
+$(document).ready(async function()
 {
+    let TOTAL_DATA_SIZE = 0;
+
+    // export all data as JSON
+    // https://stackoverflow.com/a/52297652
+    $('#export_json').click(async function ()
+    {
+        // since this operation takes time
+        // hide the button for preventing multiple clicks
+        $(this).hide();
+
+        const json_export = {};
+        for(let tbl of ARR_TABLES_SYNC_INFO)
+        {
+            const tbl_name = tbl.name;
+            const tbl_data = await db.select_all(tbl_name);
+            json_export[tbl_name] = tbl_data;
+        }
+
+        const ts = get_timestamp_for_filename();
+        const filename = `yasbil_local_data_export_${ts}.json`;
+        const jsonStr = JSON.stringify(json_export);
+
+        let element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+
+        // after exporting done, show the button again
+        $(this).show();
+    });
+
+
+
     $('#yasbil_sessions').dataTable(
     {
         order: [[ 1, "desc" ]],
         ajax: async function (data, callback, settings)
         {
             const arr_tbl = await db.select_all('yasbil_sessions');
+
+            const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+            $('#size_yasbil_sessions').html(
+                `(${get_file_size(tbl_size)})`
+            );
+            TOTAL_DATA_SIZE += tbl_size;
 
             // 'data' is the default property that DataTables looks for
             // in the source data object
@@ -87,10 +132,16 @@ $(document).ready(function()
         ajax: async function (data, callback, settings)
         {
 
-            const arr_all_data = await db.select_all('yasbil_session_pagevisits');
+            const arr_tbl = await db.select_all('yasbil_session_pagevisits');
+
+            const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+            $('#size_yasbil_session_pagevisits').html(
+                `(${get_file_size(tbl_size)})`
+            );
+            TOTAL_DATA_SIZE += tbl_size;
 
             callback({
-                'data': arr_all_data
+                'data': arr_tbl
             });
 
             //removing duplicate webNavigation event rows, using hist_ts value
@@ -181,7 +232,7 @@ $(document).ready(function()
                     ${row['pv_search_engine']}
                     <br/>
                     ${row['pv_search_query']}
-                `;
+                    `;
                 }
             },
 
@@ -204,8 +255,16 @@ $(document).ready(function()
             order: [[ 1, "desc" ]],
             ajax: async function (data, callback, settings)
             {
+                const arr_tbl = await db.select_all('yasbil_session_mouse');
+
+                const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+                $('#size_yasbil_session_mouse').html(
+                    `(${get_file_size(tbl_size)})`
+                );
+                TOTAL_DATA_SIZE += tbl_size;
+
                 callback({
-                    'data': await db.select_all('yasbil_session_mouse')
+                    'data': arr_tbl
                 });
             },
             columns: [
@@ -303,6 +362,103 @@ $(document).ready(function()
         });
 
 
+    $('#yasbil_session_serp').dataTable(
+        {
+            order: [[ 1, "desc" ]],
+            ajax: async function (data, callback, settings)
+            {
+                const arr_tbl = await db.select_all('yasbil_session_serp');
+
+                const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+                $('#size_yasbil_session_serp').html(
+                    `(${get_file_size(tbl_size)})`
+                );
+                TOTAL_DATA_SIZE += tbl_size;
+
+                callback({
+                    'data': arr_tbl
+                });
+            },
+            columns: [
+                {//session id
+                    data: null, render: function (data, type, row) {
+                        return row['session_guid'].substr(0, 6)+'...'
+                    }
+                },
+                {//time
+                    data: null, render: function (data, type, row) {
+                        return yasbil_milli_to_str(row['serp_ts'])
+                    }
+                },
+                {//url
+                    data: null, render: function (data, type, row) {
+                        return `
+                        <small>
+                        <a href='${row['serp_url']}' target='_blank'>
+                            ${new URL(row['serp_url']).hostname.substr(0, 30)}
+                        </a>
+                        </small>
+                        `;
+                    }
+                },
+
+                {//Search Engine, Search Query
+                    data: null, render: function (data, type, row) {
+                        return `
+                        <small>
+                        ${row['search_engine']}
+                        ${row['serp_offset'] > 0 ? " 2nd page" : ""}:
+                        ${row['search_query']}
+                        <br/>
+                        Length: ${row['scraped_json_arr'].length}
+                        </small>
+                        `;
+                    }
+                },
+
+                {//SERP Data
+                    data: null, render: function (data, type, row) {
+
+                        let return_data = "";
+                        const json_arr = row['scraped_json_arr'];
+
+                        let i = 0;
+                        for(let arr_i of json_arr)
+                        {
+                            if(arr_i.type === 'DOCUMENT')
+                                continue;
+
+                            return_data = return_data +
+                                `${arr_i.type}:
+                                 ${arr_i.inner_text.substring(0, 20)} 
+                                <br/>`;
+
+                            i++;
+                            if(i >= 3)
+                                break;
+                        }
+
+                        //return_data += `Length: ${json_arr.length}`;
+
+                        return `
+                        <small>${return_data}</small>
+                        `
+                        ;
+                    }
+                },
+
+
+                {//sync_ts
+                    data: null, render: function (data, type, row) {
+                        return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
+                    }
+                },
+            ]
+        });
 
 
     $('#yasbil_session_webnav').dataTable(
@@ -310,8 +466,16 @@ $(document).ready(function()
             order: [[ 1, "desc" ]],
             ajax: async function (data, callback, settings)
             {
+                const arr_tbl = await db.select_all('yasbil_session_webnav');
+
+                const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+                $('#size_yasbil_session_webnav').html(
+                    `(${get_file_size(tbl_size)})`
+                );
+                TOTAL_DATA_SIZE += tbl_size;
+
                 callback({
-                    'data': await db.select_all('yasbil_session_webnav')
+                    'data': arr_tbl
                 });
             },
             columns: [
@@ -371,5 +535,14 @@ $(document).ready(function()
                 },
             ]
         });
+
+
+    //await 2 seconds (hopefully table loads fully)
+    await sleep(1000);
+
+    $('#size_total').html(
+        `Approx Size: ${get_file_size(TOTAL_DATA_SIZE)}`
+    );
+
 
 }); // -- document.ready end ---

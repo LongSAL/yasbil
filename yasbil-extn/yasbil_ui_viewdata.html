@@ -28,27 +28,66 @@
         YASBIL Local Data
     </h1>
 
-    <p class="mt-4 h5 text-center">
-        The data below is stored locally in your browser.
-        These data will be deleted 7 days after being synced to the server ('Synced' columns)
-        <br/>
-        <br/>
-        All Times are in ISO Format:
-        <small>
-            (Image Courtesy:
-            <a href="http://apiux.com/2013/03/20/5-laws-api-dates-and-times/" target="_blank">API UX</a>):
-        </small>
-        <br/>
-        <br/>
-        <img src="img/iso-8601-skitch.png" class="img-responsive" style="max-width: 500px">
-        <br/>
+    <div class="row">
 
-    </p>
+        <div class="offset-md-1 col-md-4">
+
+            <p class="my-4 h5 ">
+                The data below is stored locally in your browser.
+                <br/>
+                <br/>
+                These data will be deleted 7 days after being synced to the server ('Synced' columns).
+            </p>
+
+            <br/>
+
+            <p class="text-center">
+                <button id="export_json"
+                        class="btn btn-secondary btn-lg mx-auto"
+                >
+                    Download Copy of Local Data
+                    <span id="size_total" class="small">
+                        Approx Size: ...
+                    </span>
+                </button>
+
+                <br/>
+                <br/>
+
+            </p>
+        </div>
+
+        <div class="offset-md-1 col-md-4">
+            <p class="my-4 h5 text-center">
+                All Times are in ISO Format:
+                <br/>
+                <small>
+                    (Image Courtesy:
+                    <a href="http://apiux.com/2013/03/20/5-laws-api-dates-and-times/" target="_blank">API UX</a>):
+                </small>
+                <br/>
+                <br/>
+                <img src="img/iso-8601-skitch.png" class="img-fluid" style="">
+            </p>
+        </div>
+
+    </div>
+
+
+
+
+
+
+
+
 
     <hr/>
 
 
-    <p class="h4 mt-5"><samp>yasbil_sessions</samp></p>
+    <p class="h4 mt-5">
+        <samp>yasbil_sessions</samp>
+        <span id="size_yasbil_sessions" class="tbl_size"></span>
+    </p>
     <table id="yasbil_sessions" class="display" style="width:100%">
         <thead>
         <tr>
@@ -65,7 +104,10 @@
 
     <hr/>
 
-    <p class="h4 mt-5"><samp>yasbil_session_pagevisits</samp></p>
+    <p class="h4 mt-5">
+        <samp>yasbil_session_pagevisits</samp>
+        <span id="size_yasbil_session_pagevisits" class="tbl_size"></span>
+    </p>
     <table id="yasbil_session_pagevisits" class="display" style="width:100%">
         <thead>
         <tr>
@@ -89,7 +131,10 @@
 
     <hr/>
 
-    <p class="h4 mt-5"><samp>yasbil_session_mouse</samp></p>
+    <p class="h4 mt-5">
+        <samp>yasbil_session_mouse</samp>
+        <span id="size_yasbil_session_mouse" class="tbl_size"></span>
+    </p>
     <table id="yasbil_session_mouse" class="display" style="width:100%">
         <thead>
         <tr>
@@ -107,9 +152,41 @@
 
 
 
+
     <hr/>
 
-    <p class="h4 mt-5"><samp>yasbil_session_webnav</samp></p>
+    <p class="h4 mt-5">
+        <samp>yasbil_session_serp</samp>
+        <span id="size_yasbil_session_serp" class="tbl_size"></span>
+    </p>
+    <table id="yasbil_session_serp" class="display" style="width:100%">
+        <thead>
+        <tr>
+            <th>Session ID</th>
+            <th>Time</th>
+            <th>URL</th>
+            <th>
+                Search Engine
+                <br/>
+                Search Query
+                <br/>
+                SERP Data Length
+            </th>
+            <th>
+                SERP Data (Top 3)
+            </th>
+            <th>Synced</th>
+        </tr>
+        </thead>
+    </table>
+
+
+    <hr/>
+
+    <p class="h4 mt-5">
+        <samp>yasbil_session_webnav</samp>
+        <span id="size_yasbil_session_webnav" class="tbl_size"></span>
+    </p>
     <table id="yasbil_session_webnav" class="display" style="width:100%">
         <thead>
         <tr>

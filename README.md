@@ -1,8 +1,8 @@
 # YASBIL: Yet Another Search Behaviour (and) Interaction Logger
 
 ## Download Links:
-* [`yasbil-extn-1.0.0.xpi`](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-1.0.0.xpi): YASBIL Browser Extension (tested with Firefox)
-* [`yasbil-wp.zip`](https://github.com/yasbil/yasbil/raw/main/yasbil-wp.zip): YASBIL WordPress plugin; to be installed in central data repository
+* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-1.0.0.xpi) (for user) tested with Firefox
+* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp.zip) (for researcher) to be installed in central data repository
 
 
 
@@ -164,6 +164,135 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 
 
+------------
+
+### `yasbil_session_serp`
+- stores scrapes of popular SERPs (currently Google is implemented)
+- stores query and search results (thanks to wonderful [CoNotate plugin](https://github.com/creativecolab/CHI2021-CoNotate))
+- contents of this table are experimental, depending on major search engines not modifying their SERP HTML structure 
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`serp_id`|server only; PK; auto-increment|
+|`serp_guid`|PK in client|
+|`session_guid`||
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
+|`win_id`|server only; |
+|`win_guid`|unique ID for the browser window in which mouse activity occurs|
+|`tab_id`|server only; |
+|`tab_guid`|unique ID for the browser tab in which mouse activity occurs|
+|--------------|--------------|
+|`serp_ts`|timestamp of scraping the SERP|
+|`serp_url`|url of the SERP|
+|`search_engine`|name of search engine (currently only GOOGLE)|
+|`search_query`|search query, extracted from URL parameter|
+|`serp_offset`|rank of the first result in this SERP; if 0 => first page of SERP; greater than 0 => not the first page|
+|--------------|--------------|
+|`scraped_json_arr`|JSON array of objects; details below|
+|--------------|--------------|
+|`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
+|`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
+|`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
+|`viewport_w`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
+|`viewport_h`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
+|`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
+|`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
+|`page_scrolled_x`| `window.pageXOffset` page horizontally scrolled, frop top left|
+|`page_scrolled_y`| `window.pageYOffset` page vertically scrolled, from top left|
+|--------------|--------------|
+|`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
+
+
+
+
+- Google SERP JSON object types, contained in `scraped_json_arr`
+```
+{
+    type: 'DOCUMENT',
+}
+```
+
+```
+{
+    type: 'MAIN_RESULT',
+    index: location in array (maybe non continuous, due to hidden elements),
+    result_title: title of the result,
+    result_url: url of the result,
+    result_snippet: result snippet,
+}
+```
+
+```
+{
+    type: 'NESTED_RESULT',
+    index: location in array (maybe non continuous, due to hidden elements),
+    parent_index: index of parent MAIN_RESULT,
+    result_title: title of result
+    result_url: url of result,
+}
+```
+
+```
+{
+    type: 'RELATED_SEARCH',
+    index: i,
+    query_suggestion: suggested search query
+    result_url: url of result
+}
+```
+
+```
+{
+    type: 'PEOPLE_ASK_CLOSED',
+    index: i,
+    query_suggestion: suggested search query (complete question)
+}
+```
+
+```
+{
+    type: 'PEOPLE_ASK_OPEN', --> shows detailed info from one result in a question ansert format
+    index: i,
+    query_suggestion: suggested search query (complete question)
+    answer_snippet: answer to the query,
+    answer_title: title of the answer snippet source,
+    answer_url: url of the answer snippet source,
+}
+```
+
+```
+{
+    type: 'OTHER', --> knowledge panels or other stuff not "blue link"
+    index: i
+}
+
+```
+In addition to the properties above, all objects have contain the following common properties about bounding box details, inner_text, and inner_html
+```
+{
+    // bounding box relative to the top-left corner of the entire webpage (HTML document)
+    page_x1: x-coordinate of top-left corner of element,
+    page_y1: y-coordinate of top-left corner of element,
+    page_x2: x-coordinate of bottom-right corner of element,
+    page_y2: y-coordinate of bottom-right corner of element,
+
+    // bounding box relative to the top-left corner of the screen / monitor (experimental)
+    screen_x1: x-coordinate of top-left corner of element,
+    screen_y1: y-coordinate of top-left corner of element,
+    screen_x2: x-coordinate of bottom-right corner of element,
+    screen_y2: y-coordinate of bottom-right corner of element,
+
+    //innerText and innerHTML
+    inner_text: e.innerText,
+    inner_html: e.innerHTML,
+}
+
+```
 
 ----------
 
@@ -192,100 +321,6 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
-
-
-------------
-
-### `yasbil_session_serp_scrape`
-- stores scrapes of (Google) SERP
-- store query and search results (thanks to wonderful [CoNotate plugin](https://github.com/creativecolab/CHI2021-CoNotate))
-- contents of this table are experimental, depending on major search engines keeping their SERP HTML constant
-
-| **Column** | **Description** |
-| ----------- | ----------- |
-|`scrape_id`|server only; PK; auto-increment|
-|`scrape_guid`|PK in client|
-|`session_guid`||
-|--------------|--------------|
-|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
-|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
-|`user_id`  | server only (WordPress User ID) |
-|`user_name`  | server only; WordPress User Name; use as codename of participant |
-|--------------|--------------|
-|`scrape_ts`|timestamp of scrape|
-|`scrape_url`|url of the page|
-|`search_engine`|name of search engine (currently only GOOGLE)|
-|`search_query`|search query, extracted from URL parameter|
-|`serp_offset`|rank of the first result in this SERP; if 0, --> first page of SERP; >0 --> not the first page|
-|--------------|--------------|
-|`scraped_json_arr`|stringified JSON array of object; details below|
-|--------------|--------------|
-|`zoom`| `window.devicePixelRatio` zoom level in fraction; use `(Math.round(value)*100)` for percentage|
-|`page_w`| `document.documentElement.scrollWidth` webpages's scrollable width (should be equal to viewport width, if there is no horizontal scrolling)|
-|`page_h`| `document.documentElement.scrollHeight` webpage's scrollable height|
-|`viewport_w`| `document.documentElement.clientWidth` width of viewport, excluding scrollbars|
-|`viewport_h`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
-|`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
-|`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
-|--------------|--------------|
-|`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
-
-
-
-
-Google SERP JSON object types (all have boundig box details, and inner_text, inner_html)
-```
-{
-    type: 'DOCUMENT',
-}
-
-{
-    type: 'MAIN_RESULT',
-    index: location in array (maybe non continuous, due to hidden elements),
-    result_title: title of the result,
-    result_url: url of the result,
-    result_snippet: result snippet,
-}
-
-{
-    type: 'NESTED_RESULT',
-    index: location in array (maybe non continuous, due to hidden elements),
-    parent_index: index of parent MAIN_RESULT,
-    result_title:
-    result_url: url of result,
-}
-
-{
-    type: 'RELATED_SEARCH',
-    index: i,
-    query_suggestion: suggested search query
-    result_url: e.closest('a') ? e.closest('a').href : "",
-
-}
-
-{
-    type: 'PEOPLE_ASK_CLOSED',
-    index: i,
-    query_suggestion: suggested search query (complete question)
-}
-
-{
-    type: 'PEOPLE_ASK_OPEN', --> shows detailed info from one result
-    index: i,
-    query_suggestion: suggested search query (complete question)
-    answer_snippet: answer to the query,
-    answer_title: title of the answer snippet source,
-    answer_url: url of the answer snippet source,
-}
-
-{
-    type: 'OTHER', --> knowledge panels or other stuff not "blue link"
-    index: i
-}
-
-```
-
-
 
 
 ----------
