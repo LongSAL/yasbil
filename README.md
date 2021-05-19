@@ -309,6 +309,17 @@ In addition to the properties above, all objects have contain the following comm
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|
 
 
+- db.string2hash(string)
+- db.hash2string(string_locator)
+
+- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
+
+
+
+
+
+
+
 |`session_guid`||
 |--------------|--------------|
 |`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
@@ -322,10 +333,7 @@ In addition to the properties above, all objects have contain the following comm
 |`string_type`|`innerHTML` / `innerText`|
 
 
-- db.get_string_locator(string)
-- db.get_string(string_locator)
 
-- locator can be `guid` or `guid|start_index|end_index`, if current string is an exact substring of an already existing string (can happen a lot for innerText and innerHTML)
 
 
 

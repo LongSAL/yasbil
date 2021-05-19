@@ -42,11 +42,109 @@ export async function insert_row(table_name, data_row, upd_sync_msg=false)
         update_sync_data_msg(); // no need to await
 }
 
+
+
+
 // generic function to select all rows from table as array
 export async function select_all(table_name)
 {
     return await db.table(table_name).toArray();
 }
+
+
+
+//-------------------- string2hash -----------------
+
+// string hash has a format `guid|start_index|end_index` where
+// the string being sought is a substring of the `string_body`
+// located at row with guid, from `start_index` to `end_index`;
+export async function string2hash(p_largestring, is_html=false)
+{
+    try
+    {
+        const _LARGE_STR_THRESH = 100;
+
+        // do not store in DB is string is less than 100 chars
+        if(p_largestring.length <= _LARGE_STR_THRESH)
+            return p_largestring;
+
+        //if HTML, compress it
+        let large_str = is_html ? compress_html_string(p_largestring) : p_largestring;
+        const str_len = large_str.length;
+
+        const arr_all_strings = select_all('yasbil_session_largestring');
+
+        // loop over all existing strings
+        for(let row of arr_all_strings)
+        {
+            // match found
+            if(row['string_body'].indexOf(large_str) >= 0)
+            {
+                const start_idx = row['string_body'].indexOf(large_str);
+                const end_idx = start_idx + str_len;
+
+                // string hash
+                return `${row['string_guid']}|${start_idx}|${end_idx}`;
+            }
+        }
+
+        // no matches --> insert in db
+        const string_guid = uuidv4();
+        const data_row = {
+            string_guid: string_guid,
+            string_body: large_str,
+            sync_ts: 0
+        }
+
+        // no need to await
+        insert_row('yasbil_session_largestring', data_row);
+
+        //string hash
+        return `${string_guid}|0|${str_len}`;
+    }
+    catch (err)
+    {
+        console.error(err);
+        return "";
+    }
+}
+
+
+
+
+//-------------------- hash2string -----------------
+export async function hash2string(p_hash)
+{
+    try
+    {
+        const split_arr = p_hash.split('|');
+
+        //string locator does not have 3 pipe-delmited parts
+        // so must be original string
+        if(split_arr.length !== 3)
+            return p_hash;
+
+        const string_guid = split_arr[0];
+        const start_idx = parseInt(split_arr[1]);
+        const end_idx = parseInt(split_arr[2]);
+
+        const row = await db.yasbil_session_largestring.get({string_guid: string_guid});
+
+        if(row)
+        {
+            return row.string_body.substring(start_idx, end_idx);
+        }
+
+        return p_hash;
+
+    }
+    catch (err)
+    {
+        console.error(err);
+        return "";
+    }
+}
+
 
 
 // specific function to update sessions table

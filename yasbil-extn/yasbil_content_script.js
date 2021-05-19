@@ -175,8 +175,8 @@ function main() { try
 
         if(e.target && e.target.innerText) //possibly not true for SCROLL
         {
-            target_text = e.target.innerText+'';
-            target_html = compress_html_string(e.target.innerHTML+'');
+            target_text = e.target.innerText;
+            target_html = e.target.innerHTML;
 
             const bb_rect = e.target.getBoundingClientRect();
             target_width = bb_rect.width;
@@ -596,7 +596,7 @@ function main() { try
 
             //innerText and innerHTML
             inner_text: dump_innerT ? e.innerText : "",
-            inner_html: dump_innerH ? compress_html_string(e.innerHTML) : "",
+            inner_html: dump_innerH ? e.innerHTML : "",
         }
     }
 
