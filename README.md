@@ -295,46 +295,6 @@ In addition to the properties above, all objects have contain the following comm
 
 ```
 
---------
-### `yasbil_session_largestring`
-- stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
-- to save space, string guid can be used across sessions
-
-| **Column** | **Description** |
-| ----------- | ----------- |
-|`string_id`|server only; PK; auto-increment|
-|`string_guid`|PK in client|
-|`string_body`|body of the string|
-|--------------|--------------|
-|`sync_ts`| initial = 0; later popl with ts from MySQL response|
-
-
-- db.string2hash(string)
-- db.hash2string(string_locator)
-
-- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
-
-
-
-
-
-
-
-|`session_guid`||
-|--------------|--------------|
-|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
-|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
-|`user_id`  | server only (WordPress User ID) |
-|`user_name`  | server only; WordPress User Name; use as codename of participant |
-|--------------|--------------|
-|--------------|--------------|
-|`string_ts`|timestamp of capturing the String|
-|`string_url`|url of the page from which string was captured|
-|`string_type`|`innerHTML` / `innerText`|
-
-
-
-
 
 
 ----------
@@ -364,6 +324,31 @@ In addition to the properties above, all objects have contain the following comm
 |`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
+
+
+
+--------
+### `yasbil_session_largestring`
+- stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
+- to save space, string guid can be used across sessions
+
+| **Column** | **Description** |
+| ----------- | ----------- |
+|`string_id`|server only; PK; auto-increment|
+|`string_guid`|PK in client|
+|`string_body`|body of the string|
+|--------------|--------------|
+|`sync_ts`| initial = 0; later popl with ts from MySQL response|
+
+
+- db.string2hash(string)
+- db.hash2string(string_locator)
+
+- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
+
+
+
+
 
 
 ----------
