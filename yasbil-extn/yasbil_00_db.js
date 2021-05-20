@@ -13,10 +13,13 @@ import Dexie from './dexie.mjs';
 // import * as util from './yasbil_00_utils.js';
 
 const db = new Dexie("yasbil_db");
+const _LARGE_STR_THRESH = 100;
+let _DICT_ALL_STRINGS = {};
 
 db.version(1).stores(DEXIE_DB_TABLES);
 
 db.open().then(async function (db) {
+    await __popl_string_dict();
     update_sync_data_msg();
     __del_synced_data(); // delete data synced over a week ago
     console.log('Database opened successfully');
@@ -52,6 +55,20 @@ export async function select_all(table_name)
 }
 
 
+//-------------------- __popl_string_dict -----------------
+// populate _DICT_ALL_STRINGS
+async function __popl_string_dict()
+{
+    const arr_all_str = await select_all('yasbil_session_largestring');
+
+    for(const row of arr_all_str)
+    {
+        _DICT_ALL_STRINGS[row['string_guid']] = row['string_body'];
+    }
+
+    console.log('string dict populated: ', Object.keys(_DICT_ALL_STRINGS).length);
+}
+
 
 //-------------------- string2hash -----------------
 
@@ -62,8 +79,6 @@ export async function string2hash(p_largestring, is_html=false)
 {
     try
     {
-        const _LARGE_STR_THRESH = 100;
-
         // do not store in DB is string is less than 100 chars
         if(p_largestring.length <= _LARGE_STR_THRESH)
             return p_largestring;
@@ -72,23 +87,27 @@ export async function string2hash(p_largestring, is_html=false)
         let large_str = is_html ? compress_html_string(p_largestring) : p_largestring;
         const str_len = large_str.length;
 
-        const arr_all_strings = select_all('yasbil_session_largestring');
+        // if in-memory cache empty, repopulate it
+        if(Object.keys(_DICT_ALL_STRINGS).length === 0)
+            await __popl_string_dict();
 
         // loop over all existing strings
-        for(let row of arr_all_strings)
+        for (const [string_guid, string_body] of Object.entries(_DICT_ALL_STRINGS))
         {
-            // match found
-            if(row['string_body'].indexOf(large_str) >= 0)
+            if(string_body.indexOf(large_str) >= 0)
             {
-                const start_idx = row['string_body'].indexOf(large_str);
+                const start_idx = string_body.indexOf(large_str);
                 const end_idx = start_idx + str_len;
 
+                const str_hash = `${string_guid}|${start_idx}|${end_idx}`;
+
+                // console.log('FOUND\t\t',str_hash);
                 // string hash
-                return `${row['string_guid']}|${start_idx}|${end_idx}`;
+                return str_hash;
             }
         }
 
-        // no matches --> insert in db
+        // no matches --> create new entry
         const string_guid = uuidv4();
         const data_row = {
             string_guid: string_guid,
@@ -96,11 +115,16 @@ export async function string2hash(p_largestring, is_html=false)
             sync_ts: 0
         }
 
-        // no need to await
+        // add to database
         insert_row('yasbil_session_largestring', data_row);
 
-        //string hash
-        return `${string_guid}|0|${str_len}`;
+        // add to in-memory cache
+        _DICT_ALL_STRINGS[string_guid] = large_str;
+
+        const str_hash = `${string_guid}|0|${str_len}`;
+
+        // console.log(str_hash);
+        return str_hash;
     }
     catch (err)
     {
@@ -113,7 +137,7 @@ export async function string2hash(p_largestring, is_html=false)
 
 
 //-------------------- hash2string -----------------
-export async function hash2string(p_hash)
+export function hash2string(p_hash)
 {
     try
     {
@@ -128,11 +152,9 @@ export async function hash2string(p_hash)
         const start_idx = parseInt(split_arr[1]);
         const end_idx = parseInt(split_arr[2]);
 
-        const row = await db.yasbil_session_largestring.get({string_guid: string_guid});
-
-        if(row)
+        if(_DICT_ALL_STRINGS[string_guid])
         {
-            return row.string_body.substring(start_idx, end_idx);
+            return _DICT_ALL_STRINGS[string_guid].substring(start_idx, end_idx);
         }
 
         return p_hash;
@@ -458,7 +480,7 @@ async function __reset_sync_ts()
 // -------------------- __del_synced_data --------------------
 async function __del_synced_data()
 {
-    const __DAY_THRESH = 7; // 7 days...
+    const __DAY_THRESH = 1; // 7 days...
     const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
     const oneWeekAgo = Date.now() - DEL_THRESH;
 

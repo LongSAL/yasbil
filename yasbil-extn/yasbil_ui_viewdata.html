@@ -17,7 +17,6 @@
     <script src="js/jquery-3.5.1.js"></script>
     <script src="js/bootstrap.bundle.v5.0.0-beta1.js"></script>
     <script src="js/jquery.dataTables.min.js"></script>
-    <!--script src="fflate.js"></script-->
     <script src="yasbil_00_shared_constants.js"></script>
     <script src="yasbil_00_shared_functions.js"></script>
     <script type="module" src="yasbil_ui_viewdata.js"></script>
@@ -37,7 +36,8 @@
                 The data below is stored locally in your browser.
                 <br/>
                 <br/>
-                These data will be deleted 7 days after being synced to the server ('Synced' columns).
+                To save space on your disk,
+                these data will be deleted 24 hours after being synced to the server ('Synced' columns).
             </p>
 
             <br/>
@@ -198,6 +198,25 @@
             <th>Event</th>
             <!--th>Frame</th-->
             <th>Transition</th>
+            <th>Synced</th>
+        </tr>
+        </thead>
+    </table>
+
+
+
+    <hr/>
+
+    <p class="h4 mt-5">
+        <samp>yasbil_session_largestring</samp>
+        <span id="size_yasbil_session_largestring" class="tbl_size"></span>
+    </p>
+    <table id="yasbil_session_largestring" class="display" style="width:100%">
+        <thead>
+        <tr>
+            <th>String ID</th>
+            <th>String Body</th>
+            <th>String Size (k)</th>
             <th>Synced</th>
         </tr>
         </thead>

@@ -485,6 +485,14 @@ function object_equals( x, y ) {
 }
 
 
+// https://stackoverflow.com/a/31637900
+function html_encode(e)
+{
+    return e.replace(/[^]/g,function(e)
+    {
+        return"&#"+e.charCodeAt(0)+";"
+    });
+}
 
 
 

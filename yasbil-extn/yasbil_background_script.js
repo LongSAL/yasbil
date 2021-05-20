@@ -449,8 +449,8 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         pv_transition_type: transition_typ.toUpperCase(),
 
         // taking the first element
-        pv_page_text: db.string2hash(page_text[0]),
-        pv_page_html: db.string2hash(page_html[0], true),
+        pv_page_text: await db.string2hash(page_text[0]),
+        pv_page_html: await db.string2hash(page_html[0], true),
 
         //TODO: opengraph tags
 
@@ -470,7 +470,7 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
 
 
 // -------------------- log_mouse and scroll --------------------
-function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
+async function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
 {
     // do no track certain blocked domains (e.g. gmail, about:, etc)
     if(!is_tracking_allowed(tabInfo.url))
@@ -504,11 +504,11 @@ function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
         mouse_y: yasbil_ev_data.mouse_y,
         hover_dur: yasbil_ev_data.hover_dur,
 
-        dom_path: db.string2hash(yasbil_ev_data.dom_path),
-        target_text: db.string2hash(yasbil_ev_data.target_text),
-        target_html: db.string2hash(yasbil_ev_data.target_html),
-        closest_a_text: db.string2hash(yasbil_ev_data.closest_a_text),
-        closest_a_html: db.string2hash(yasbil_ev_data.closest_a_html),
+        dom_path: await db.string2hash(yasbil_ev_data.dom_path),
+        target_text: await db.string2hash(yasbil_ev_data.target_text),
+        target_html: await db.string2hash(yasbil_ev_data.target_html),
+        closest_a_text: await db.string2hash(yasbil_ev_data.closest_a_text),
+        closest_a_html: await db.string2hash(yasbil_ev_data.closest_a_html),
 
         sync_ts: 0,
     };
@@ -522,7 +522,7 @@ function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
 
 
 // -------------------- log_serp --------------------
-function log_serp(yasbil_serp_data, tabInfo)
+async function log_serp(yasbil_serp_data, tabInfo)
 {
     try
     {
@@ -534,10 +534,10 @@ function log_serp(yasbil_serp_data, tabInfo)
         for(let arr_i of yasbil_serp_data.scraped_json_arr)
         {
             if(arr_i.inner_text)
-                arr_i.inner_text = db.string2hash(arr_i.inner_text);
+                arr_i.inner_text = await db.string2hash(arr_i.inner_text);
 
             if(arr_i.inner_html)
-                arr_i.inner_html = db.string2hash(arr_i.inner_html, true);
+                arr_i.inner_html = await db.string2hash(arr_i.inner_html, true);
         }
 
         const data_row = {

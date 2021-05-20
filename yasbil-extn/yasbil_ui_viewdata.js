@@ -32,25 +32,16 @@ $(document).ready(async function()
             const ts = get_timestamp_for_filename();
             const filename_prefix = `yasbil_data_${ts}`;
             const json_filename = filename_prefix + '.json';
-
-
-            /*const zip_filename = filename_prefix + '.zip';
-
             const json_string = JSON.stringify(json_export);
 
+            /*const zip_filename = filename_prefix + '.zip';
             console.log('zip start');
-
             //------ zipping ----------
             //https://github.com/photopea/UZIP.js
             //https://github.com/101arrowz/fflate
-
             const buf = fflate.strToU8(json_string);
-
             const zip_Uint8Array = fflate.zipSync(buf, { level: 9 }); //returns Uint8Array
-
             const zip_base64 = btoa(new TextDecoder().decode(zip_Uint8Array));
-
-
             console.log('zip end');*/
 
 
@@ -72,11 +63,9 @@ $(document).ready(async function()
             // after exporting done, show the button again
             $(this).show();
         }
-        catch (e)
+        catch (err)
         {
-            e.stack();
-            console.trace();
-            return "";
+            console.error(err);
         }
     });
 
@@ -159,6 +148,8 @@ $(document).ready(async function()
     });
 
 
+    //await few seconds to load in-memory string cache
+    await sleep(1000);
 
     $('#yasbil_session_pagevisits').dataTable(
     {
@@ -214,15 +205,19 @@ $(document).ready(async function()
 
             { // url and sizes
                 data: null, render: function (data, type, row) {
+
+                    const pv_page_text = db.hash2string(row['pv_page_text']);
+                    const pv_page_html = db.hash2string(row['pv_page_html']);
+
                     return `
                     <small>
                     <a href='${row['pv_url']}' target='_blank'>
                         ${row['pv_hostname']}
                     </a>
                     <br/>
-                    Text: ${(row['pv_page_text'].length/1000).toFixed(1)}k 
+                    Text: ${(pv_page_text.length/1000).toFixed(1)}k 
                     <br/>
-                    HTML: ${(row['pv_page_html'].length/1000).toFixed(1)}k
+                    HTML: ${(pv_page_html.length/1000).toFixed(1)}k
                     </small>
                     `;
                 }
@@ -375,14 +370,18 @@ $(document).ready(async function()
 
                 {// event tagret
                     data: null, render: function (data, type, row) {
+
+                        const target_text = db.hash2string(row['target_text']);
+                        const target_html = db.hash2string(row['target_html']);
+
                         return `
                         <small>
-                        ${row['target_text'].substr(0, 50)}
+                        ${target_text.substr(0, 50)}
                         
                         <br/>
-                        Text: ${(row['target_text'].length/1000).toFixed(1)}k 
+                        Text: ${(target_text.length/1000).toFixed(1)}k 
                         |
-                        HTML: ${(row['target_html'].length/1000).toFixed(1)}k
+                        HTML: ${(target_html.length/1000).toFixed(1)}k
                         </small>
                         `;
                     }
@@ -469,9 +468,11 @@ $(document).ready(async function()
                             if(arr_i.type === 'DOCUMENT')
                                 continue;
 
+                            const inner_text = db.hash2string(arr_i.inner_text);
+
                             return_data = return_data +
                                 `${arr_i.type}:
-                                 ${arr_i.inner_text.substring(0, 20)} 
+                                 ${inner_text.substring(0, 20)} 
                                 <br/>`;
 
                             i++;
@@ -578,6 +579,64 @@ $(document).ready(async function()
                 },
             ]
         });
+
+
+
+
+
+    $('#yasbil_session_largestring').dataTable(
+        {
+            order: [[ 2, "desc" ]],
+            ajax: async function (data, callback, settings)
+            {
+                const arr_tbl = await db.select_all('yasbil_session_largestring');
+
+                const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+                $('#size_yasbil_session_largestring').html(
+                    `(${get_file_size(tbl_size)})`
+                );
+                TOTAL_DATA_SIZE += tbl_size;
+
+                callback({
+                    'data': arr_tbl
+                });
+            },
+            columns: [
+                {//String id
+                    data: null, render: function (data, type, row) {
+                        return row['string_guid'].substr(0, 6)+'...'
+                    }
+                },
+                {//String Body
+                    data: null, render: function (data, type, row) {
+
+                        const str_body = row['string_body'].substring(0, 150);
+                        const str_safe = html_encode(str_body) + '...';
+
+                        return `<small>${str_safe}</small>`;
+                    }
+                },
+                {//String Size
+                    className: "text-end",
+                    data: null, render: function (data, type, row) {
+                        return (row['string_body'].length/1000).toFixed(1);
+                    }
+                },
+
+
+                {//sync_ts
+                    data: null, render: function (data, type, row) {
+                        return `
+                        <small>
+                        ${yasbil_milli_to_str(parseInt(row['sync_ts']))}
+                        </small>
+                    `;
+                    }
+                },
+            ]
+        });
+
+
 
 
     //await 2 seconds (hopefully table loads fully)
