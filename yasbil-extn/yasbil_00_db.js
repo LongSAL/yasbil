@@ -66,7 +66,7 @@ async function __popl_string_dict()
         _DICT_ALL_STRINGS[row['string_guid']] = row['string_body'];
     }
 
-    console.log('string dict populated: ', Object.keys(_DICT_ALL_STRINGS).length);
+    // console.log('string dict populated: ', Object.keys(_DICT_ALL_STRINGS).length);
 }
 
 
@@ -408,7 +408,19 @@ export async function update_sync_data_msg()
     let size_tot = 0;
     let sync_msg = //`<i>No data available to sync.</i>` +
         `<i> Turn on logging and browse the internet to record data.</i>`;
-    let row_counts_html = "<p class='text-end' style='width: 80%'>";
+
+    let row_counts_html = `
+        <small>
+        <table class="table table-striped table-hover table-sm">
+        <thead>
+            <tr>
+                <th class="text-start">Data Table</th>
+                <th class="text-end"># Rows</th>
+                <th class="text-end">Size</th>
+            </tr>
+        </thead>
+        <tbody>
+        `;
 
     for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
     {
@@ -428,26 +440,38 @@ export async function update_sync_data_msg()
         size_tot += tbl_size;
 
         row_counts_html = row_counts_html +
-            `${tbl.nice_name}: <b>${row_count}</b> rows (${get_file_size(tbl_size)}) 
-            <br/>
+            `<tr>
+                <td class="text-start">${tbl.nice_name}</td>
+                <td class="text-end">${row_count}</td>
+                <td class="text-end">${get_file_size(tbl_size)}</td>
+             </tr>
             `;
     }
 
     row_counts_html = row_counts_html +
-        "---------------------------<br/>" +
-        `Total: <b> ${n_tot} </b> rows (${get_file_size(size_tot)}) <br/>` +
-        "---------------------------" +
-        "</p>";
+        ` </tbody>
+           <tfoot>
+                <tr class="table-info fw-bold">
+                    <td class="text-start">Total</td>
+                    <td class="text-end">${n_tot}</td>
+                    <td class="text-end">${get_file_size(size_tot)}</td>
+                </tr>
+            </tfoot>
+        </table>
+        </small>
+        `;
 
     set_sync_rows_tot(n_tot);
 
     if(n_tot > 0)
     {
         if(get_sync_status() === "OFF")
-            sync_msg = `Data ready to sync:<br/><br/>${row_counts_html}`;
+            sync_msg = `Data Ready to Sync:<br/>${row_counts_html}`;
         else
-            sync_msg = `Data being synced:<br/><br/>${row_counts_html}`;
+            sync_msg = `Data Being Synced:<br/>${row_counts_html}`;
     }
+
+    // console.log(sync_msg);
 
     set_sync_data_msg(sync_msg);
 }

@@ -338,10 +338,9 @@ function get_timestamp_for_filename()
             .replaceAll(':','') // "20210519T004102"
             .replaceAll('T','_') // "20210519_004102"
     }
-    catch (e)
+    catch (err)
     {
-        e.stack();
-        console.trace();
+        console.error(err);
         return "";
     }
 }
@@ -394,17 +393,29 @@ function compress_html_string(p_html_str)
             'template',
         ];
 
-        const el = document.createElement('html');
-        el.innerHTML = p_html_str;
+        let result = "";
 
-        for(let tag of DELETE_TAGS)
+        //another try-catch block because some websites
+        // blocks the loading of a resource at inline (“script-src”)
+        try
         {
-            el.querySelectorAll(tag).forEach(function(item, index){
-                item.parentNode.removeChild(item);
-            });
+            const el = document.createElement('template');
+            el.innerHTML = p_html_str;
+
+            for(let tag of DELETE_TAGS)
+            {
+                el.querySelectorAll(tag).forEach(function(item, index){
+                    item.parentNode.removeChild(item);
+                });
+            }
+
+            result = el.innerHTML;
+        }
+        catch (err) {
+            //fallback to the original string
+            result = p_html_str;
         }
 
-        let result = el.innerHTML;
         result = result.replace(/^\s+|\r\n|\n|\r|(>)\s+(<)|\s+$/gm, '$1$2');
         result = result.replaceAll("  ", " ").replaceAll("  ", " ");
 
@@ -418,10 +429,10 @@ function compress_html_string(p_html_str)
 
         return result;
     }
-    catch (err)
+    catch (err2)
     {
-        console.error(err);
-        return "";
+        console.error(err2);
+        return p_html_str;
     }
 }
 

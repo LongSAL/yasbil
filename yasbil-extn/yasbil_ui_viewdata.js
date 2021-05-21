@@ -80,7 +80,7 @@ $(document).ready(async function()
 
             const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
             $('#size_yasbil_sessions').html(
-                `(${get_file_size(tbl_size)})`
+                `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
             );
             TOTAL_DATA_SIZE += tbl_size;
 
@@ -161,7 +161,7 @@ $(document).ready(async function()
 
             const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
             $('#size_yasbil_session_pagevisits').html(
-                `(${get_file_size(tbl_size)})`
+                `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
             );
             TOTAL_DATA_SIZE += tbl_size;
 
@@ -288,7 +288,7 @@ $(document).ready(async function()
 
                 const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
                 $('#size_yasbil_session_mouse').html(
-                    `(${get_file_size(tbl_size)})`
+                    `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
                 );
                 TOTAL_DATA_SIZE += tbl_size;
 
@@ -411,7 +411,7 @@ $(document).ready(async function()
 
                 const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
                 $('#size_yasbil_session_serp').html(
-                    `(${get_file_size(tbl_size)})`
+                    `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
                 );
                 TOTAL_DATA_SIZE += tbl_size;
 
@@ -514,7 +514,7 @@ $(document).ready(async function()
 
                 const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
                 $('#size_yasbil_session_webnav').html(
-                    `(${get_file_size(tbl_size)})`
+                    `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
                 );
                 TOTAL_DATA_SIZE += tbl_size;
 
@@ -593,7 +593,7 @@ $(document).ready(async function()
 
                 const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
                 $('#size_yasbil_session_largestring').html(
-                    `(${get_file_size(tbl_size)})`
+                    `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
                 );
                 TOTAL_DATA_SIZE += tbl_size;
 

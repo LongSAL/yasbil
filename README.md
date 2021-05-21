@@ -170,6 +170,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 - stores scrapes of popular SERPs (currently Google is implemented)
 - stores query and search results (thanks to wonderful [CoNotate plugin](https://github.com/creativecolab/CHI2021-CoNotate))
 - contents of this table are experimental, depending on major search engines not modifying their SERP HTML structure 
+- <span style="color:red"><b>Known Issue:</b> SERPs preloaded before YASBIL is started will not be scraped. User needs to reload the SERP for scraping to occur.</span>.
 
 | **Column** | **Description** |
 | ----------- | ----------- |
@@ -331,6 +332,9 @@ In addition to the properties above, all objects have contain the following comm
 ### `yasbil_session_largestring`
 - stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
 - to save space, string guid can be used across sessions
+- db.string2hash(string)
+- db.hash2string(string_locator)
+- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
 
 | **Column** | **Description** |
 | ----------- | ----------- |
@@ -341,10 +345,7 @@ In addition to the properties above, all objects have contain the following comm
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|
 
 
-- db.string2hash(string)
-- db.hash2string(string_locator)
 
-- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
 
 
 
