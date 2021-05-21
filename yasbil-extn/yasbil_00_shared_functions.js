@@ -412,6 +412,13 @@ function compress_html_string(p_html_str)
                 });
             }
 
+            // remove all 'data-yasbil_hover_st' attributes
+            dummy_doc.querySelectorAll('[data-yasbil_hover_st]').forEach(function(item, index)
+            {
+                delete item.dataset.yasbil_hover_st;
+                //item.removeAttribute('data-yasbil_hover_st');
+            });
+
             result = dummy_doc.documentElement.outerHTML;
         }
         catch (err) {
