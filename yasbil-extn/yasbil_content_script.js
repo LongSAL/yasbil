@@ -206,10 +206,15 @@ function main() { try
                 // https://stackoverflow.com/a/36044262
                 ...get_viewport_properties(),
 
+                //for hover and click events
+                mouse_x: -1,
+                mouse_y: -1,
+                // for hover event (mouseout - mousein)
+                hover_dur: hover_dur,
+
                 //path from current element upto <HTML> in DOM
                 //if there is 'A' in dom_path, event was over an anchor tag
                 dom_path: dom_path_arr.join('|'),
-
                 target_text: target_text, //rendered text of the target element
                 target_html: target_html, //html of the target element
                 target_width: target_width,
@@ -221,21 +226,13 @@ function main() { try
                 closest_a_width: 0,
                 closest_a_height: 0,
 
-                //for hover and click events
-                mouse_x: -1,
-                mouse_y: -1,
-
-                // for hover event (mouseout - mousein)
-                hover_dur: hover_dur,
-
                 //for scroll events
                 scroll_x_delta: scroll_x_delta,
                 scroll_y_delta: scroll_y_delta,
-
             }
         };
 
-        if(closest_a)
+        if(closest_a) //not for scroll
         {
             msg_obj.yasbil_ev_data.closest_a_text = closest_a.innerText;
             msg_obj.yasbil_ev_data.closest_a_html = closest_a.innerHTML;
@@ -246,13 +243,8 @@ function main() { try
 
         }
 
-        if(e_name === 'MOUSE_MOVE')
-        {
-            //X-Y location of the mouse pointer
-            msg_obj.yasbil_ev_data.mouse_x = e.pageX;
-            msg_obj.yasbil_ev_data.mouse_y = e.pageY;
-        }
-        else if([
+        // not SCROLL
+        if([
             'MOUSE_HOVER',
             'MOUSE_CLICK',
             'MOUSE_RCLICK',
@@ -263,6 +255,12 @@ function main() { try
             msg_obj.yasbil_ev_data.mouse_x = e.pageX;
             msg_obj.yasbil_ev_data.mouse_y = e.pageY;
         }
+        // else if(e_name === 'MOUSE_MOVE')
+        // {
+        //     //X-Y location of the mouse pointer
+        //     msg_obj.yasbil_ev_data.mouse_x = e.pageX;
+        //     msg_obj.yasbil_ev_data.mouse_y = e.pageY;
+        // }
 
         if(sendMsg){
             p_BG_interaction.postMessage(msg_obj);

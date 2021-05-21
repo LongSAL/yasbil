@@ -59,7 +59,7 @@ export async function select_all(table_name)
 // populate _DICT_ALL_STRINGS
 async function __popl_string_dict()
 {
-    const arr_all_str = await select_all('yasbil_session_largestring');
+    const arr_all_str = await select_all('yasbil_largestring');
 
     for(const row of arr_all_str)
     {
@@ -75,7 +75,7 @@ async function __popl_string_dict()
 // string hash has a format `guid|start_index|end_index` where
 // the string being sought is a substring of the `string_body`
 // located at row with guid, from `start_index` to `end_index`;
-export async function string2hash(p_largestring, is_html=false)
+export async function string2hash(p_largestring, src_url="", is_html=false)
 {
     try
     {
@@ -112,11 +112,12 @@ export async function string2hash(p_largestring, is_html=false)
         const data_row = {
             string_guid: string_guid,
             string_body: large_str,
+            src_url: src_url,
             sync_ts: 0
         }
 
         // add to database
-        insert_row('yasbil_session_largestring', data_row);
+        insert_row('yasbil_largestring', data_row);
 
         // add to in-memory cache
         _DICT_ALL_STRINGS[string_guid] = large_str;
@@ -229,7 +230,7 @@ export async function do_sync_job()
             }
             else
             {
-                increment_sync_rows_done(sync_result.num_rows_done);
+                // increment_sync_rows_done(sync_result.num_rows_done);
                 set_sync_progress_msg(`Finished syncing ${tbl.nice_name}`);
             }
         }

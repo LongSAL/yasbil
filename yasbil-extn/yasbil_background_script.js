@@ -449,8 +449,8 @@ async function log_pagevisits(tabId, ts, e_name, p_tran_typ= null)
         pv_transition_type: transition_typ.toUpperCase(),
 
         // taking the first element
-        pv_page_text: await db.string2hash(page_text[0]),
-        pv_page_html: await db.string2hash(page_html[0], true),
+        pv_page_text: await db.string2hash(page_text[0], tabInfo.url),
+        pv_page_html: await db.string2hash(page_html[0], tabInfo.url,true),
 
         //TODO: opengraph tags
 
@@ -486,10 +486,11 @@ async function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
         tab_id: tabInfo.id,
         tab_guid: get_tab_guid(tabInfo.id),
 
+        m_ts: yasbil_ev_data.e_ts,
         m_event: yasbil_ev_data.e_name,
         m_url: tabInfo.url,
-        m_ts: yasbil_ev_data.e_ts,
 
+        //viewport properties
         zoom: yasbil_ev_data.zoom,
         page_w: yasbil_ev_data.page_w,
         page_h: yasbil_ev_data.page_h,
@@ -497,18 +498,26 @@ async function log_mouse_and_scroll(yasbil_ev_data, tabInfo)
         viewport_h: yasbil_ev_data.viewport_h,
         browser_w: yasbil_ev_data.browser_w,
         browser_h: yasbil_ev_data.browser_h,
-
         page_scrolled_x: yasbil_ev_data.page_scrolled_x,
         page_scrolled_y: yasbil_ev_data.page_scrolled_y,
+
         mouse_x: yasbil_ev_data.mouse_x,
         mouse_y: yasbil_ev_data.mouse_y,
         hover_dur: yasbil_ev_data.hover_dur,
 
-        dom_path: await db.string2hash(yasbil_ev_data.dom_path),
-        target_text: await db.string2hash(yasbil_ev_data.target_text),
-        target_html: await db.string2hash(yasbil_ev_data.target_html),
-        closest_a_text: await db.string2hash(yasbil_ev_data.closest_a_text),
-        closest_a_html: await db.string2hash(yasbil_ev_data.closest_a_html),
+        dom_path: await db.string2hash(yasbil_ev_data.dom_path, tabInfo.url),
+        target_text: await db.string2hash(yasbil_ev_data.target_text, tabInfo.url),
+        target_html: await db.string2hash(yasbil_ev_data.target_html, tabInfo.url, true),
+        target_width: yasbil_ev_data.target_width,
+        target_height: yasbil_ev_data.target_height,
+
+        closest_a_text: await db.string2hash(yasbil_ev_data.closest_a_text, tabInfo.url),
+        closest_a_html: await db.string2hash(yasbil_ev_data.closest_a_html, tabInfo.url, true),
+        closest_a_width: yasbil_ev_data.closest_a_width,
+        closest_a_height: yasbil_ev_data.closest_a_height,
+
+        scroll_x_delta: yasbil_ev_data.scroll_x_delta,
+        scroll_y_delta: yasbil_ev_data.scroll_y_delta,
 
         sync_ts: 0,
     };
@@ -534,15 +543,16 @@ async function log_serp(yasbil_serp_data, tabInfo)
         for(let arr_i of yasbil_serp_data.scraped_json_arr)
         {
             if(arr_i.inner_text)
-                arr_i.inner_text = await db.string2hash(arr_i.inner_text);
+                arr_i.inner_text = await db.string2hash(arr_i.inner_text, tabInfo.url);
 
             if(arr_i.inner_html)
-                arr_i.inner_html = await db.string2hash(arr_i.inner_html, true);
+                arr_i.inner_html = await db.string2hash(arr_i.inner_html, tabInfo.url,true);
         }
 
         const data_row = {
             serp_guid: uuidv4(),
             session_guid: get_session_guid(),
+
             win_id: tabInfo.windowId,
             win_guid: get_win_guid(tabInfo.windowId),
             tab_id: tabInfo.id,
@@ -607,8 +617,8 @@ function log_webnav(
         tab_id: p_tab_id,
         tab_guid: get_tab_guid(p_tab_id),
 
-        webnav_event: p_webnav_event,
         webnav_ts: p_webnav_ts,
+        webnav_event: p_webnav_event,
         webnav_url: p_webnav_url,
         webnav_transition_type: p_webnav_transition_type,
         webnav_transition_qual: p_webnav_transition_qual,

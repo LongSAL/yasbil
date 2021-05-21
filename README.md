@@ -106,7 +106,8 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 ----------------
  
 ### `yasbil_session_mouse`
-- captures mouse activity 
+- captures mouse activity
+- since scroll events are fired rapidly, a scoll event is logged only when user has scrolled at least 1% of the page width or page height
  
 | **Column** | **Description** |
 | ----------- | ----------- |
@@ -135,24 +136,26 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`viewport_h`| `document.documentElement.clientHeight` height of viewport, excluding scrollbars|
 |`browser_w`| `window.outerWidth` width of entire browser window; changes with zoom level|
 |`browser_h`| `window.outerHeight` height of entire browser window; changes with zoom level|
-|--------------|--------------|
 |`page_scrolled_x`| `window.pageXOffset` page horizontally scrolled, frop top left|
 |`page_scrolled_y`| `window.pageYOffset` page vertically scrolled, from top left|
+|--------------|--------------|
 |`mouse_x`| `MouseEvent.pageX` X (horizontal) coordinate (in pixels) at which the mouse was clicked, relative to the left edge of the entire document. This includes any portion of the document not currently visible|
 |`mouse_y`| `MouseEvent.pageY` Y (vertical) coordinate in pixels of the event relative to the whole document. This property takes into account any vertical scrolling of the page|
 |`hover_dur`|duration of hover (if `MOUSE_HOVER` event) in milliseconds|
-|`scroll_x_delta`|amount of horizontal pixels scrolled in current `SCROLL` event, recorded for every 1% of page width or more |
-|`scroll_y_delta`|amount of vertical pixels scrolled in current `SCROLL` event, recorded for every 1% of page height or more|
 |--------------|--------------|
 |`dom_path`|sequence of element tags up the DOM hierarchy from the target element to HTML|
 |`target_text`|rendered text of the target element of the event|
 |`target_html`|`innerHTML` of the target element of the event|
 |`target_width`| width of the target (px)|
 |`target_height`| height of the target (px)|
+|--------------|--------------|
 |`closest_a_text`|rendered text of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
 |`closest_a_html`|`innerHTML` of the closest anchor tag / link (`<a>`) from the event's target element, if exists|
 |`closest_a_width`|width of the closest anchor tag (px)|
 |`closest_a_height`|height of the closest anchor tag (px)|
+|--------------|--------------|
+|`scroll_x_delta`|amount of horizontal pixels scrolled in current `SCROLL` event, recorded for every 1% of page width or more |
+|`scroll_y_delta`|amount of vertical pixels scrolled in current `SCROLL` event, recorded for every 1% of page height or more|
 |--------------|--------------|
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
@@ -329,7 +332,7 @@ In addition to the properties above, all objects have contain the following comm
 
 
 --------
-### `yasbil_session_largestring`
+### `yasbil_largestring`
 - stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
 - to save space, string guid can be used across sessions
 - db.string2hash(string)
@@ -340,6 +343,7 @@ In addition to the properties above, all objects have contain the following comm
 | ----------- | ----------- |
 |`string_id`|server only; PK; auto-increment|
 |`string_guid`|PK in client|
+|`src_url`|URL from where string was originally found|
 |`string_body`|body of the string|
 |--------------|--------------|
 |`sync_ts`| initial = 0; later popl with ts from MySQL response|

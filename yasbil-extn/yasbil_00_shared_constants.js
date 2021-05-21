@@ -16,7 +16,7 @@ const DEXIE_DB_TABLES = {
     yasbil_session_mouse: 'm_guid,sync_ts',
     yasbil_session_webnav: 'webnav_guid,sync_ts',
     yasbil_session_serp: 'serp_guid,sync_ts',
-    yasbil_session_largestring: 'string_guid,sync_ts'
+    yasbil_largestring: 'string_guid,sync_ts'
     //yasbil_session_pagetext: 'pt_guid,[session_guid+url],sync_ts',
     //yasbil_session_framevisits: 'fv_guid',
 }
@@ -47,7 +47,7 @@ const ARR_TABLES_SYNC_INFO = [{
     api_endpoint: '/sync_table',
     nice_name: 'SERPs'
 }, {
-    name: 'yasbil_session_largestring',
+    name: 'yasbil_largestring',
     pk: 'string_guid',
     api_endpoint: '/sync_table',
     nice_name: 'Text Content'

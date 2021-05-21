@@ -197,6 +197,7 @@ $(document).ready(async function()
                     return row['session_guid'].substr(0, 6)+'...'
                 }
             },
+
             {//time
                 data: null, render: function (data, type, row) {
                     return yasbil_milli_to_str(row['pv_ts'])
@@ -584,15 +585,15 @@ $(document).ready(async function()
 
 
 
-    $('#yasbil_session_largestring').dataTable(
+    $('#yasbil_largestring').dataTable(
         {
-            order: [[ 2, "desc" ]],
+            order: [[ 3, "desc" ]],
             ajax: async function (data, callback, settings)
             {
-                const arr_tbl = await db.select_all('yasbil_session_largestring');
+                const arr_tbl = await db.select_all('yasbil_largestring');
 
                 const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
-                $('#size_yasbil_session_largestring').html(
+                $('#size_yasbil_largestring').html(
                     `(${arr_tbl.length} rows; ${get_file_size(tbl_size)})`
                 );
                 TOTAL_DATA_SIZE += tbl_size;
@@ -607,15 +608,26 @@ $(document).ready(async function()
                         return row['string_guid'].substr(0, 6)+'...'
                     }
                 },
+                {//url
+                    data: null, render: function (data, type, row) {
+                        return `
+                        <small>
+                        <a href='${row['src_url']}' target='_blank'>
+                            ${new URL(row['src_url']).hostname.substr(0, 30)}
+                        </a>
+                        </small>
+                        `;
+                    }
+                },
                 {//String Body
                     data: null, render: function (data, type, row) {
 
                         const str_body = row['string_body'].substring(0, 150);
                         const str_safe = html_encode(str_body) + '...';
-
                         return `<small>${str_safe}</small>`;
                     }
                 },
+
                 {//String Size
                     className: "text-end",
                     data: null, render: function (data, type, row) {
@@ -623,6 +635,22 @@ $(document).ready(async function()
                     }
                 },
 
+                {//Full String Body
+                    data: null, render: function (data, type, row) {
+
+                        const str_safe = html_encode(row['string_body']);
+                        return `
+                            <button class="btn btn-outline-secondary  btn-sm" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modal_longtext"
+                                data-longtext="${str_safe}" 
+                                type="button">
+                                View Full String   
+                            </button>
+                        `;
+
+                    }
+                },
 
                 {//sync_ts
                     data: null, render: function (data, type, row) {
@@ -637,6 +665,12 @@ $(document).ready(async function()
         });
 
 
+    $("#modal_longtext").on('show.bs.modal', function (e)
+    {
+        const triggerLink = $(e.relatedTarget);
+        const longtext = triggerLink.data('longtext');
+        $(this).find(".modal-body #longtext_body").text(longtext);
+    });
 
 
     //await 2 seconds (hopefully table loads fully)

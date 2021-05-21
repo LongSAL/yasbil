@@ -376,6 +376,7 @@ function get_file_size(num_chars)
 }
 
 // ----------- compress_html_string -----------
+const _parser = new DOMParser();
 function compress_html_string(p_html_str)
 {
     try
@@ -395,24 +396,27 @@ function compress_html_string(p_html_str)
 
         let result = "";
 
-        //another try-catch block because some websites
+        // another try-catch block because some websites
         // blocks the loading of a resource at inline (“script-src”)
         try
         {
-            const el = document.createElement('template');
-            el.innerHTML = p_html_str;
+            const dummy_doc = _parser.parseFromString(p_html_str, "text/html");
 
             for(let tag of DELETE_TAGS)
             {
-                el.querySelectorAll(tag).forEach(function(item, index){
-                    item.parentNode.removeChild(item);
+                dummy_doc.querySelectorAll(tag).forEach(function(item, index){
+                    if(item.parentNode)
+                        item.parentNode.removeChild(item);
+                    else
+                        item.remove();
                 });
             }
 
-            result = el.innerHTML;
+            result = dummy_doc.documentElement.outerHTML;
         }
         catch (err) {
             //fallback to the original string
+            console.log(err.toString());
             result = p_html_str;
         }
 

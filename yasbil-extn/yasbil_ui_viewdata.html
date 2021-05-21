@@ -213,19 +213,37 @@
     <hr/>
 
     <p class="h4 mt-5">
-        <samp>yasbil_session_largestring</samp>
-        <span id="size_yasbil_session_largestring" class="tbl_size"></span>
+        <samp>yasbil_largestring</samp>
+        <span id="size_yasbil_largestring" class="tbl_size"></span>
     </p>
-    <table id="yasbil_session_largestring" class="display" style="width:100%">
+    <table id="yasbil_largestring" class="display" style="width:100%">
         <thead>
         <tr>
             <th>String ID</th>
-            <th>String Body</th>
+            <th>URL</th>
+            <th>Truncated String Body</th>
             <th>String Size (k)</th>
+            <th>View Full String</th>
             <th>Synced</th>
         </tr>
         </thead>
     </table>
+
+    <div id="modal_longtext" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-dark bg-light">
+                    <samp id="longtext_body" style="font-size: 80%"></samp>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
 
