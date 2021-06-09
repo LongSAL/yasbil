@@ -1,7 +1,9 @@
-## Data Dictionary
+# YASBIL Data Dictionary
 
+This page describes the various datatables that YASBIL maintains in the browser extension (via IndexedDB) and WordPress Plugin (via MySQL / Mariadb).
+Since all the data is read-only, we decided to include the session, project, and user detail columns in each table (non-normalized), thus avoiding the need to write inner join statements whenever data needs to be selected.
 
-### `yasbil_sessions`
+## `yasbil_sessions`
 
 - Master Table.  Records all session: start and stop of browser extn
 - one userid is associated with one project only
@@ -33,7 +35,7 @@
 
  ----------------
  
-### `yasbil_session_pagevisits`
+## `yasbil_session_pagevisits`
 
 - Page Visits in a Session, similar to `moz_places`
 - captured from three events:
@@ -89,7 +91,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 ----------------
  
-### `yasbil_session_mouse`
+## `yasbil_session_mouse`
 - captures mouse activity
 - since scroll events are fired rapidly, a scoll event is logged only when user has scrolled at least 1% of the page width or page height
  
@@ -145,7 +147,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 
 
-#### More Resources:
+### More Resources:
 - [How to Get the Screen, Window, and Web Page Sizes in JavaScript](https://dmitripavlutin.com/screen-window-page-sizes/)
 - [Guide on Viewports](https://www.quirksmode.org/mobile/viewports.html)
 
@@ -153,7 +155,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 
 ------------
 
-### `yasbil_session_serp`
+## `yasbil_session_serp`
 - stores scrapes of popular SERPs (currently Google is implemented)
 - stores query and search results (thanks to wonderful [CoNotate plugin](https://github.com/creativecolab/CHI2021-CoNotate))
 - contents of this table are experimental, depending on major search engines not modifying their SERP HTML structure 
@@ -196,10 +198,9 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`sync_ts` | initial = 0; later populated with timestamps from MySQL response |
 
 
-Zip request?
-https://stuk.github.io/jszip/
 
 - Google SERP JSON object types, contained in `scraped_json_arr`
+
 ```
 {
     type: 'DOCUMENT',
@@ -287,7 +288,7 @@ In addition to the properties above, all objects have contain the following comm
 
 ----------
 
-### `yasbil_session_webnav`
+## `yasbil_session_webnav`
 - captures [`webnavigation`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events as timing signals 
 - only for `frameId` = 0, i.e. a tab's top-level browsing context, not in a nested `<iframe>`
 
@@ -316,12 +317,12 @@ In addition to the properties above, all objects have contain the following comm
 
 
 --------
-### `yasbil_largestring`
+## `yasbil_largestring`
 - stores large strings (length > 100) (mainly innerHTMLs and innerTexts) at a single location to reduce upload size and prevent redundancy
 - to save space, string guid can be used across sessions
-- db.string2hash(string)
-- db.hash2string(string_locator)
-- string locator has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
+  - `db.string2hash ( string )`
+  - `db.hash2string( string_locator )`
+- `string_locator` has a format `guid|start_index|end_index` where the string being sought is a substring of the `string_body` from `start_index` to `end_index`;
 
 | **Column** | **Description** |
 | ----------- | ----------- |
@@ -334,26 +335,21 @@ In addition to the properties above, all objects have contain the following comm
 
 
 
-
-
-
-
-
-
-----------
-
-
-
-
-
-
-
-
-## Participant Management
-Participant will be able to sync data to the server if the
-`yasbil_user_status` user meta field is not equal to the string `DISABLED`.
-
-
+-----------
 
 ## Extension Development (Important Files)
+- This section is in development.
 - shared: constants and functions shared used by both content scripts and background scripts
+
+
+
+
+
+
+
+
+
+
+
+
+
