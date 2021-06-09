@@ -4,8 +4,8 @@ This repository contains the code for the paper [_YASBIL: Yet Another Search Beh
 
 
 ## Download Links:
-* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.0.0.xpi) (for user) tested with Firefox
-* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.0.0.zip) (for researcher) to be installed in central data repository
+* [YASBIL Browser Extension](./yasbil-extn-2.0.0.xpi) (for user) tested with Firefox
+* [YASBIL WordPress plugin](./yasbil-wp-2.0.0.zip) (for researcher) to be installed in central data repository
 
 
 ## Demo Video:
