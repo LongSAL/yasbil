@@ -4,9 +4,8 @@ This repository contains the code for the paper [_YASBIL: Yet Another Search Beh
 
 
 ## Download Links:
-* [YASBIL Browser Extension](./yasbil-extn-2.0.0.xpi) (for user) tested with Firefox
-* [YASBIL WordPress plugin](./yasbil-wp-2.0.0.zip) (for researcher) to be installed in central data repository
-* <a href="yasbil-extn-2.0.0.xpi" download>YASBIL Browser Extension</a>
+* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.0.0.xpi) (for user) tested with Firefox
+* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.0.0.zip) (for researcher) to be installed in central data repository
 
 ## Demo Video:
 Screen recording of a typical research participant’s search session and
