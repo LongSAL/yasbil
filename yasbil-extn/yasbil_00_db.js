@@ -293,102 +293,110 @@ async function sync_table_data(table_name, pk, api_endpoint)
 
     try
     {
-        // --------- STEP 1: SELECTing table data ---------
-        let table_data = await db.table(table_name)
-            .where('sync_ts').equals(0)
-            .toArray();
+        // max payload size to upload in one request (server query size),
+        const PAYLOAD_MAX_SIZE_MB = 4;
 
-        if(!table_data || table_data.length === 0){
-            // throw new Error(`No syncable data in table`);
-            return sync_result;
+        // loop exits when no more sync_ts = 0?
+        while(true)
+        {
+            // --------- STEP 1: SELECTing table data ---------
+            let table_data = await db.table(table_name)
+                .where('sync_ts').equals(0)
+                .toArray();
+
+            // loop exit condition?
+            if(!table_data || table_data.length === 0){
+                // throw new Error(`No syncable data in table`);
+                return sync_result;
+            }
+
+            //todo: check payload length for large table data
+            const size_bytes = new TextEncoder().encode(JSON.stringify(table_data)).length
+            const size_mb = size_bytes / (1024 * 1024);
+
+            if(size_mb >= PAYLOAD_MAX_SIZE_MB)
+            {
+                // if n rows create size_mb, how many rows for payload_max_size?
+                const n_rows_to_send = Math.floor(table_data.length / size_mb * PAYLOAD_MAX_SIZE_MB);
+                table_data = table_data.slice(0, n_rows_to_send);
+
+                /*if(table_data.length >= 10)
+                table_data = [
+                    table_data[0],
+                    table_data[1],
+                    table_data[2],
+                    table_data[3],
+                    table_data[4],
+                ];*/
+            }
+
+            const num_rows_sent = table_data.length;
+
+            // --------- STEP 2: setting up POST request ---------
+            const settings = yasbil_get_settings();
+            const basic_auth = btoa(settings.USER + ':' + settings.PASS);
+
+            const myHeaders = new Headers();
+            myHeaders.append("Authorization", "Basic " + basic_auth);
+            myHeaders.append("Content-Type", "application/json");
+
+            let body_data = JSON.stringify({
+                table_name: table_name,
+                client_pk_col: pk,
+                num_rows: num_rows_sent,
+                data_rows: table_data
+            });
+
+            const req_options = {
+                method: 'POST',
+                headers: myHeaders,
+                body: body_data,
+                redirect: 'follow'
+            };
+
+            const req_url = settings.URL + API_NAMESPACE + api_endpoint;
+
+
+            // --------- STEP 3: making request and parsing response ---------
+
+            // fetch() requires TWO promise resolutions:
+            // 1. fetch() makes a network request to the url and returns a promise.
+            //    The promise resolves with a response object when the remote server
+            //    responds with headers, but BEFORE the full response is downloaded.
+            // 2. To read the full response, we should call the method response.text():
+            //    it returns a promise that resolves when the full text is downloaded
+            //    from the remote server, with that text as a result.
+
+            const response = await fetch(req_url, req_options)
+            const txt_resp = await response.text();
+            const json_resp = checkJSON(txt_resp);
+
+            if(!json_resp)
+                throw new Error(`Error syncing ${table_name}: Invalid JSON returned: ${txt_resp}`);
+
+            sync_result.resp_body_json = json_resp;
+
+
+            // --------- STEP 4: tallying response rows with request rows ---------
+            if(!json_resp.hasOwnProperty('guids'))
+                throw new Error(`Error syncing ${table_name}: No GUIDs returned: ${txt_resp}`);
+
+            const num_rows_received = json_resp.guids.length;
+
+            if(num_rows_sent !== num_rows_received)
+                throw new Error(`Error syncing ${table_name}: Rows sent = ${num_rows_sent}; Rows received = ${num_rows_received}`);
+
+
+            // --------- STEP 5: update table rows with received sync_ts ---------
+            const upd_sync_ts = parseInt(json_resp.sync_ts);
+            await db.table(table_name)
+                .where(pk)
+                .anyOf(json_resp.guids)
+                //.where('sync_ts').equals(0)
+                .modify({sync_ts: upd_sync_ts});
+
+            sync_result.num_rows_done += num_rows_received;
         }
-
-        //todo: check payload length for large table data
-        //const size_bytes = new TextEncoder().encode(JSON.stringify(table_data)).length
-        //const size_kb = size_bytes / 1024;
-
-
-        /*if(table_data.length >= 10)
-            table_data = [
-                table_data[0],
-                table_data[1],
-                table_data[2],
-                table_data[3],
-                table_data[4],
-                table_data[5],
-                table_data[6],
-                table_data[7],
-                table_data[8],
-                table_data[9],
-            ];*/
-
-
-        const num_rows_sent = table_data.length;
-
-        // --------- STEP 2: setting up POST request ---------
-        const settings = yasbil_get_settings();
-        const basic_auth = btoa(settings.USER + ':' + settings.PASS);
-
-        const myHeaders = new Headers();
-        myHeaders.append("Authorization", "Basic " + basic_auth);
-        myHeaders.append("Content-Type", "application/json");
-
-        let body_data = JSON.stringify({
-            table_name: table_name,
-            client_pk_col: pk,
-            num_rows: num_rows_sent,
-            data_rows: table_data
-        });
-
-        const req_options = {
-            method: 'POST',
-            headers: myHeaders,
-            body: body_data,
-            redirect: 'follow'
-        };
-
-        const req_url = settings.URL + API_NAMESPACE + api_endpoint;
-
-
-        // --------- STEP 3: making request and parsing response ---------
-
-        // fetch() requires TWO promise resolutions:
-        // 1. fetch() makes a network request to the url and returns a promise.
-        //    The promise resolves with a response object when the remote server
-        //    responds with headers, but BEFORE the full response is downloaded.
-        // 2. To read the full response, we should call the method response.text():
-        //    it returns a promise that resolves when the full text is downloaded
-        //    from the remote server, with that text as a result.
-
-        const response = await fetch(req_url, req_options)
-        const txt_resp = await response.text();
-        const json_resp = checkJSON(txt_resp);
-
-        if(!json_resp)
-            throw new Error(`Error syncing ${table_name}: Invalid JSON returned: ${txt_resp}`);
-
-        sync_result.resp_body_json = json_resp;
-
-
-        // --------- STEP 4: tallying response rows with request rows ---------
-        if(!json_resp.hasOwnProperty('guids'))
-            throw new Error(`Error syncing ${table_name}: No GUIDs returned: ${txt_resp}`);
-
-        const num_rows_received = json_resp.guids.length;
-
-        if(num_rows_sent !== num_rows_received)
-            throw new Error(`Error syncing ${table_name}: Rows sent = ${num_rows_sent}; Rows received = ${num_rows_received}`);
-
-
-        // --------- STEP 5: update table rows with received sync_ts ---------
-        const upd_sync_ts = parseInt(json_resp.sync_ts);
-        await db.table(table_name)
-            .where(pk)
-            .anyOf(json_resp.guids)
-            //.where('sync_ts').equals(0)
-            .modify({sync_ts: upd_sync_ts});
-
-        sync_result.num_rows_done = num_rows_received;
     }
     catch (err)
     {

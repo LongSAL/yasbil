@@ -635,7 +635,7 @@ $(document).ready(async function()
                     }
                 },
 
-                {//Full String Body
+                /*{//Full String Body (slows down some participants' machines)
                     data: null, render: function (data, type, row) {
 
                         const str_safe = html_encode(row['string_body']);
@@ -650,7 +650,7 @@ $(document).ready(async function()
                         `;
 
                     }
-                },
+                },*/
 
                 {//sync_ts
                     data: null, render: function (data, type, row) {
@@ -665,12 +665,12 @@ $(document).ready(async function()
         });
 
 
-    $("#modal_longtext").on('show.bs.modal', function (e)
+    /*$("#modal_longtext").on('show.bs.modal', function (e)
     {
         const triggerLink = $(e.relatedTarget);
         const longtext = triggerLink.data('longtext');
         $(this).find(".modal-body #longtext_body").text(longtext);
-    });
+    });*/
 
 
     //await 2 seconds (hopefully table loads fully)

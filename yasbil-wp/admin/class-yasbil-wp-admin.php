@@ -427,7 +427,7 @@ class YASBIL_WP_Admin {
         <div class="wrap">
             <h1>YASBIL Data Collection Summary</h1>
 
-            <p>All timestamps are in UTC.</p>
+            <p>All timestamps are in participant's local time.</p>
 
             <style>
                 .badge-enabled {
@@ -549,6 +549,7 @@ class YASBIL_WP_Admin {
                                 , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
                                 , (COUNT(DISTINCT pv.pv_guid) / COUNT(DISTINCT s.session_guid) ) pv_per_session
                                 , MAX(pv.pv_ts) last_activity
+                                , s.session_tz_offset
                             FROM $tbl_sessions s,
                                 $tbl_pagevisits pv
                             WHERE 1=1 
@@ -560,6 +561,8 @@ class YASBIL_WP_Admin {
                                     $wpdb->prepare($sql_select_summary_stats, $user_id),
                                     ARRAY_A
                                 );
+
+                                $tz_off = $row_stats['session_tz_offset'];
 
                                 ?>
                                 <tr>
@@ -581,7 +584,7 @@ class YASBIL_WP_Admin {
                                     <td><?=$row_stats['pv_ct']?></td>
                                     <td><?=$this->yasbil_display_dur($row_stats['avg_session_dur_ms'])?></td>
                                     <td><?=$row_stats['pv_per_session']?></td>
-                                    <td><?=$this->yasbil_milli_to_str($row_stats['last_activity'])?></td>
+                                    <td><?=$this->yasbil_milli_to_str($row_stats['last_activity'], $tz_off)?></td>
                                 </tr>
 
                                 <?php
@@ -752,7 +755,7 @@ class YASBIL_WP_Admin {
 <?php   }
 ?>
 
-            <p>All timestamps are in UTC.</p>
+            <p>All timestamps are in participant's local time.</p>
 <?php
         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
 
@@ -773,6 +776,7 @@ class YASBIL_WP_Admin {
         foreach ($db_res_sessions as $row_s)
         {
             $session_guid = $row_s['session_guid'];
+            $tz_off = $row_s['session_tz_offset'];
 ?>
             <hr style="border: 1px solid #aaa; margin: 20px 0px 10px;">
 
@@ -784,10 +788,10 @@ class YASBIL_WP_Admin {
 
             <p style="font-size:16px">
                 <b>Start Time:</b>
-                <?=$this->yasbil_milli_to_str($row_s['session_start_ts'], true)?>
+                <?=$this->yasbil_milli_to_str($row_s['session_start_ts'], $tz_off, true)?>
                 &nbsp; &bull; &nbsp;
                 <b>End Time:</b>
-                <?=$this->yasbil_milli_to_str($row_s['session_end_ts'], true)?>
+                <?=$this->yasbil_milli_to_str($row_s['session_end_ts'], $tz_off, true)?>
                 &nbsp; &bull; &nbsp;
                 <b>Duration:</b>
                 <?=$this->yasbil_display_dur_diff($row_s['session_start_ts'], $row_s['session_end_ts'])?>
@@ -801,7 +805,7 @@ class YASBIL_WP_Admin {
                 <?="{$row_s['browser_vendor']} {$row_s['browser_name']} {$row_s['browser_version']}"?>
                 &nbsp; &bull; &nbsp;
                 <b>Synced:</b>
-                <?=$this->yasbil_milli_to_str($row_s['sync_ts'], true)?>
+                <?=$this->yasbil_milli_to_str($row_s['sync_ts'], $tz_off, true)?>
 
 
                 <br/><br/>
@@ -874,7 +878,7 @@ class YASBIL_WP_Admin {
                     $arr_tab[$row_pv['tab_id']] = $tab_num++;
                 }
 
-                $time = $this->yasbil_milli_to_str($row_pv['pv_ts']);
+                $time = $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off);
 
                 $window = $arr_win[$row_pv['win_id']];
                 $tab = $arr_tab[$row_pv['tab_id']];
@@ -885,11 +889,6 @@ class YASBIL_WP_Admin {
                     . $row_pv['pv_hostname']
                     . '</a>';
 
-                $title = '<a target="_blank" title="'.$row_pv['pv_title'].'" href="'. esc_url($row_pv['pv_url']) . '">'
-                    . $this->yasbil_truncate_str($row_pv['pv_title'])
-                    . '</a>';
-
-                //$sync_time = $this->yasbil_milli_to_str($row_pv['sync_ts']);
 ?>
                     <tr>
                         <!-- hidden; for export-->
@@ -912,7 +911,7 @@ class YASBIL_WP_Admin {
                             )?>
                         </td>
                         <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
-                        <td><?="<b>{$row_pv['pv_srch_engine']}</b><br/>{$row_pv['pv_srch_qry']}"?></td>
+                        <td><?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?></td>
                     </tr>
 <?php
             } // --------- end pagevisit loop -------------
@@ -1278,9 +1277,13 @@ class YASBIL_WP_Admin {
     }
 
 
-    public function yasbil_milli_to_str($milli_time, $incl_day=false)
+    public function yasbil_milli_to_str($milli_time, $tz_offset_mins=0, $incl_day=false)
     {
-        $sec_time = $milli_time / 1000;
+        //$sec_time = $milli_time / 1000;
+        $sec_time = $milli_time / 1000 + $tz_offset_mins*60;
+
+        if($sec_time <= 0)
+            return "-";
 
         if($incl_day)
             return strtoupper(date('Y-m-d, D, H:i:s', $sec_time));
