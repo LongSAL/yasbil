@@ -517,7 +517,7 @@ class YASBIL_WP_Admin {
                                 <th>Total Sessions</th>
                                 <th>Total Page Visits</th>
                                 <th>Avg Session Duration</th>
-                                <th>Page Visit per Session</th>
+                                <th>Page Visits per Session</th>
                                 <th>Last Browsing Activity</th>
                             </tr>
                             </thead>
@@ -547,7 +547,7 @@ class YASBIL_WP_Admin {
                             SELECT COUNT(DISTINCT s.session_guid) session_ct
                                 , COUNT(DISTINCT pv.hist_ts) pv_ct
                                 , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
-                                , (COUNT(DISTINCT pv.pv_guid) / COUNT(DISTINCT s.session_guid) ) pv_per_session
+                                , round(COUNT(DISTINCT pv.hist_ts) / COUNT(DISTINCT s.session_guid), 1) pv_per_session
                                 , MAX(pv.pv_ts) last_activity
                                 , s.session_tz_offset
                             FROM $tbl_sessions s,
