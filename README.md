@@ -4,18 +4,21 @@ This repository contains the code for the paper [_YASBIL: Yet Another Search Beh
 
 
 ## Download Links:
-* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.0.0.xpi) (for user) tested with Firefox
+* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.0.1.xpi) (for user) tested with Firefox
 * [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.0.0.zip) (for researcher) to be installed in central data repository
 
-## Demo Video:
-Screen recording of a typical research participant’s search session and
-interaction with YASBIL (both browser extension and WordPress plugin).
+## Videos:
 
-[![YouTube Video: YASBIL Demo Screen Recording](./resources/yasbil-youtube-thumbnail.png)](http://www.youtube.com/watch?v=-sxQ2Xh_EPo "YASBIL Demo Screen Recording")
+| SIGIR 2021 Presentation: Demo Track | How to Use YASBIL |
+| ----------- | ----------- |
+|[![YouTube Video: SIGIR'21 presentation](./resources/yasbil-youtube-sigir21.png)](https://www.youtube.com/watch?v=HDxPEFnvnm0 "SIGIR'21 presentation")|[![YouTube Video: YASBIL v1.0 - How to Use](./resources/yasbil-youtube-howtouse.png)](http://www.youtube.com/watch?v=-sxQ2Xh_EPo "YASBIL v1.0 - How to Use")|
 
-## Instructions to Use YASBIL
+
+
+## Instructions
 * [Instructions for Participants](./docs/instructions-participant.md)
 * [Instructions for Researchers](./docs/instructions-researcher.md)
+
 
 ## Data Dictionary
 A complete list of all the database tables used by YASBIL [can be found here](./docs/data-dictionary.md).

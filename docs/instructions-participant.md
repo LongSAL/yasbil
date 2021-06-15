@@ -7,7 +7,7 @@ NOTE: You have to use Firefox Web Browser for using YASBIL.
 ## Part 1: Installation
 1. Download the Firefox Web Browser from the [official website](https://www.mozilla.org/en-US/firefox/new/).
 
-2. Download the latest version of the **YASBIL Firefox Extension** by clicking this link (link to latest version of YASBIL-EXTN, found on homepage). It will be an XPI file in the format `yasbil-extn-[version].xpi`.
+2. Download the latest version of the **YASBIL Browser Extension** from the [YASBIL GitHub page](https://github.com/yasbil/yasbil). It will be an XPI file in the format `yasbil-extn-[version].xpi`.
 
 3. Open Firefox Web Browser, and **drag the downloaded XPI file into the main browser window**. A notification will appear that an external source wants to install an add-on
 (need help? check out [how to install firefox extensions method 2](https://www.wikihow.com/Install-Firefox-Extensions#Using-Drag.2FDrop-to-Install-XPI-Files)).
@@ -23,9 +23,9 @@ Congratulations! You have installed YASBIL extension.
 ## Part 2: Settings
 1. The researcher will provide you with the following information for syncing your browsing data to the researcher’s server:
 ```
-Server URL
-Username
-App Password
+ Server URL
+ Username
+ App Password
 ```
  
 2. Open Firefox and **click on on the YASBIL button** on the toolbar.
