@@ -8,15 +8,15 @@
  * registers the activation and deactivation functions, and defines a function
  * that starts the plugin.
  *
- * @link              https://github.com/nilavra/yasbil
+ * @link              https://github.com/yasbil/yasbil
  * @since             1.0.0
  * @package           YASBIL_WP
  *
  * @wordpress-plugin
  * Plugin Name:       YABIL WP
- * Plugin URI:        https://github.com/nilavra/yasbil
+ * Plugin URI:        https://github.com/yasbil/yasbil
  * Description:       YASBIL: Yet Another Search Behaviour (and) Interaction Logger
- * Version:           1.0.0
+ * Version:           2.0.0
  * Author:            Nilavra Bhattacharya
  * Author URI:        https://nilavra.in
  * License:           GPL-2.0+
@@ -35,11 +35,11 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'YASBIL_WP_VERSION', '1.0.0' );
+define( 'YASBIL_WP_VERSION', '2.0.0' );
 //define( 'PLUGIN_NAME_VERSION', '1.0.0' );
 
 global $yasbil_wp_db_version;
-$yasbil_wp_db_version = '1.0';
+$yasbil_wp_db_version = '2.0';
 
 /**
  * The code that runs during plugin activation.

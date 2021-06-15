@@ -62,9 +62,21 @@ class YASBIL_WP_Admin {
      */
     public function yasbil_register_api_endpoints()
     {
-        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v1/sync_sessions
+        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/sync_table
 
-        register_rest_route('yasbil/v1', 'sync_sessions', [
+        register_rest_route('yasbil/v2_0_0', 'check_connection', [
+            'methods'             => WP_REST_Server::READABLE, //GET
+            'callback'            => array($this, 'yasbil_sync_check_connection'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);
+
+        register_rest_route('yasbil/v2_0_0', 'sync_table', [
+            'methods'             => WP_REST_Server::CREATABLE, //POST
+            'callback'            => array($this, 'yasbil_sync_table'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);
+
+        /*register_rest_route('yasbil/v1', 'sync_sessions', [
             // By using this constant we ensure that when the WP_REST_Server
             // changes our readable endpoints will work as intended.
             'methods'             => WP_REST_Server::CREATABLE, //POST
@@ -73,16 +85,16 @@ class YASBIL_WP_Admin {
             'callback'            => array($this, 'yasbil_sync_sessions_table'),
             // Here we register our permissions callback. The callback is fired
             // before the main callback to check if the current user can access the endpoint.
-            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
-        ]);
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);*/
 
         //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v1/sync_pagevisits
 
-        register_rest_route('yasbil/v1', 'sync_pagevisits', [
+        /*register_rest_route('yasbil/v1', 'sync_pagevisits', [
             'methods'             => WP_REST_Server::CREATABLE, //POST
             'callback'            => array($this, 'yasbil_sync_pagevisits_table'),
-            'permission_callback' => array($this, 'yasbil_sync_permissions_check'),
-        ]);
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);*/
 
         // multiple endpoints can be registered in one function..
 //        register_rest_route('yasbil/v1', 'posts', [
@@ -265,12 +277,12 @@ class YASBIL_WP_Admin {
             <br/><br/>
             <b><i>Do not alter the assigned YASBIL project if a participant has already uploaded some data.</i></b>
             <br/>
-            In that case, it is better to create a new user and assign them to the new YABIL project.
+            In that case, it is better to create a new user and assign them to the new YASBIL project.
         </p>
         <table class="form-table">
             <tr>
                 <th>
-                    <label for="yasbil_projects">
+                    <label for='yasbil_projects'>
                         <?php _e( 'Assigned to YASBIL Project' ); ?>
                     </label>
                 </th>
@@ -280,12 +292,17 @@ class YASBIL_WP_Admin {
                     // only one YASBIL project per user
                     if ( !empty( $terms ) )
                     {
+                        $userAssigned = 0;
+
                         foreach ( $terms as $term )
                         {
+                            if(is_object_in_term( $user->ID, 'yasbil_projects', $term->slug )){
+                                $userAssigned += 1; //not using true / false as this will loop again
+                            }
 ?>
                             <label for="yasbil_projects-<?php echo esc_attr( $term->slug ); ?>">
                                 <input type="radio"
-                                    name="yasbil_projects"
+                                    name='yasbil_projects'
                                     id="yasbil_projects-<?php echo esc_attr( $term->slug ); ?>"
                                     value="<?php echo $term->slug; ?>"
                                     <?php if ( $pagenow !== 'user-new.php' ) checked( true, is_object_in_term( $user->ID, 'yasbil_projects', $term->slug ) ); ?>
@@ -294,11 +311,18 @@ class YASBIL_WP_Admin {
                             </label>
                             <br/>
 <?php
+
+                            if($pagenow !== 'user-new.php' && $userAssigned > 0)
+                            {
+?>                              <script>jQuery('input[name=yasbil_projects]').attr('disabled',true);</script>
+<?php
+                            }
+
                         }
                     }
                     // If there are no YASBIL Projects, display a message.
                     else {
-                        _e( 'No YASBIL Projects are available. Create some from the YASBIL-WP Menu.' );
+                        _e( 'No YASBIL Projects are available. Create some projects from the YASBIL WP Menu.' );
                     }
 ?>
                 </td>
@@ -315,6 +339,7 @@ class YASBIL_WP_Admin {
 
     /**
      * Saves the term selected on the new or edit user profile page in the admin.
+     * Sets yasbil_user_status meta key = ACTIVE (i.e user can immediately start syncing data)
      * This function is triggered when the page is updated. We just grab the posted data
      * and use wp_set_object_terms() to save it.
      *
@@ -333,11 +358,12 @@ class YASBIL_WP_Admin {
         // if ( !current_user_can( 'edit_user', $user_id ) && current_user_can( $tax->cap->assign_terms ) )
         //    return false;
 
-        $tax = get_taxonomy( 'yasbil_projects' );
-
         $term = $_POST['yasbil_projects'];
         // Sets the terms (we're just using a single term) for the user.
         wp_set_object_terms( $user_id, $term, 'yasbil_projects', false);
+
+        //enables this user to sync data
+        $this->yasbil_set_user_enabled($user_id);
 
         clean_object_term_cache( $user_id, 'yasbil_projects' );
     }
@@ -361,7 +387,261 @@ class YASBIL_WP_Admin {
 
 
 
-//-------------------------- Admin Page Render --------------------------------
+//-------------------------- START: HTML Render Functions --------------------------------
+
+
+    /**
+     * Renders HTML to view Summary Data
+     * Only Visible To admins.
+     * Provides URLs to view per-user data
+     */
+    public function yasbil_html_admin_summary_data()
+    {
+        //page is only for admins
+        // redundant - probably
+        if(!current_user_can('administrator')) {
+            return;
+        }
+
+        global $wpdb;
+
+        // activate / deactivate participants
+        if(isset($_POST['yasbil_select_users']) && is_array($_POST['yasbil_select_users']))
+        {
+            $arr_user_ids = $_POST['yasbil_select_users'];
+
+            foreach($arr_user_ids as $user_id)
+            {
+                if(isset($_POST['yasbil_set_user_enabled']))
+                    $this->yasbil_set_user_enabled($user_id);
+                elseif (isset($_POST['yasbil_set_user_disabled']))
+                    $this->yasbil_set_user_disabled($user_id);
+            }
+        }
+
+        ?>
+
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+
+        <div class="wrap">
+            <h1>YASBIL Data Collection Summary</h1>
+
+            <p>All timestamps are in participant's local time.</p>
+
+            <style>
+                .badge-enabled {
+                    color: #fff;
+                    background-color: #007bff;
+                }
+
+                .badge-disabled {
+                    color: #fff;
+                    background-color: #aaa;
+                }
+
+                .badge {
+                    display: inline-block;
+                    padding: .25em .4em;
+                    font-size: 100%;
+                    font-weight: 700;
+                    line-height: 1;
+                    text-align: center;
+                    white-space: nowrap;
+                    vertical-align: baseline;
+                    border-radius: .25rem;
+                }
+            </style>
+
+
+            <?php
+
+            // Get the terms (project names) of the 'yasbil_projects' taxonomy.
+            $arr_yasbil_projects = get_terms( 'yasbil_projects', array( 'hide_empty' => false ) );
+            if ( !empty( $arr_yasbil_projects ) )
+            {
+                foreach ($arr_yasbil_projects as $proj)
+                {
+                    $project_id = $proj->term_id; // constant; use Select distinct on this
+                    $project_name = strtoupper($proj->slug) ; // should be constant; can be varied;
+                    $project_nice_name = $proj->name;
+                    $project_desc = $proj->description;
+
+                    ?>
+                    <hr style="border: 1px solid #aaa; margin: 20px 0px 10px;">
+
+                    <h1>
+                        Project <?=$project_id?>: <?=$project_name?>
+                    </h1>
+
+                    <p style="font-size:16px">
+                        <b>Full Name:</b>
+                        <?=$project_nice_name?>
+                        &nbsp; &bull; &nbsp;
+                        <b>Description:</b>
+                        <?=$project_desc?>
+
+                        <br/><br/>
+
+                        List of Participants:
+                    </p>
+
+                <?php
+                $arr_participants = get_objects_in_term($project_id, 'yasbil_projects');
+
+                // not WP_Error and not empty array
+                if(!is_wp_error( $arr_participants ) && !empty($arr_participants))
+                {
+                ?>
+                    <form method="post">
+                    <p class="submit">
+                        <input type="submit" name="yasbil_set_user_enabled" id="submit-enable"
+                               class="button button-primary" value="Enable Users">
+                        &nbsp;&nbsp;
+                        <input type="submit" name="yasbil_set_user_disabled" id="submit-deactivate"
+                               class="button button-secondary" value="Disable Users">
+                    </p>
+
+
+
+
+                    <div class="table-wrapper"
+                         style="padding: 10px; background: white"
+                    >
+
+                        <table id="table_project_<?=$project_name?>" class="display">
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Total Sessions</th>
+                                <th>Total Page Visits</th>
+                                <th>Avg Session Duration</th>
+                                <th>Page Visits per Session</th>
+                                <th>Last Browsing Activity</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php
+                            foreach ($arr_participants as $user_id)
+                            {
+                                $user_info = get_userdata($user_id);
+                                $user_status = $this->yasbil_get_user_status($user_id);
+                                $user_status_badge = "<span class='badge badge-enabled'>ENABLED</span>";
+
+                                if($user_status === "DISABLED")
+                                    $user_status_badge = "<span class='badge badge-disabled'>DISABLED</span>";
+
+                                $user_data_url = admin_url('admin.php?page=yasbil_wp&user_id='.$user_id, 'https');
+                                $user_name = $user_info->user_login;
+                                $user_name_link = '<a title="View Uploaded Data" target="_blank" href="'.$user_data_url.'">'
+                                    .$user_name
+                                    .'</a>';
+
+                                $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
+                                $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+
+                                //fix: added IF() for when session_end_ts = 0 (not recorded)
+
+                                $sql_select_summary_stats = "
+                            SELECT COUNT(DISTINCT s.session_guid) session_ct
+                                , COUNT(DISTINCT pv.hist_ts) pv_ct
+                                , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
+                                , round(COUNT(DISTINCT pv.hist_ts) / COUNT(DISTINCT s.session_guid), 1) pv_per_session
+                                , MAX(pv.pv_ts) last_activity
+                                , s.session_tz_offset
+                            FROM $tbl_sessions s,
+                                $tbl_pagevisits pv
+                            WHERE 1=1 
+                            AND s.session_guid = pv.session_guid
+                            AND s.user_id = %s
+                        ";
+
+                                $row_stats = $wpdb->get_row(
+                                    $wpdb->prepare($sql_select_summary_stats, $user_id),
+                                    ARRAY_A
+                                );
+
+                                $tz_off = $row_stats['session_tz_offset'];
+
+                                ?>
+                                <tr>
+                                    <td>
+                                        <label for="yasbil_select_user_<?=$user_id?>">
+                                            <input type="checkbox"
+                                                   name='yasbil_select_users[]'
+                                                   id="yasbil_select_user_<?=$user_id?>"
+                                                   title="Select User <?=$user_id?> (<?=$user_name?>) to activate / deactivate"
+                                                   value="<?=$user_id?>">
+                                            <?=$user_id?>
+                                            &nbsp;
+                                            <?=$user_status_badge?>
+                                        </label>
+
+                                    </td>
+                                    <td><?=$user_name_link?></td>
+                                    <td><?=$row_stats['session_ct']?></td>
+                                    <td><?=$row_stats['pv_ct']?></td>
+                                    <td><?=$this->yasbil_display_dur($row_stats['avg_session_dur_ms'])?></td>
+                                    <td><?=$row_stats['pv_per_session']?></td>
+                                    <td><?=$this->yasbil_milli_to_str($row_stats['last_activity'], $tz_off)?></td>
+                                </tr>
+
+                                <?php
+                            } // --------- end participants loop -------------
+                            ?>
+                            </tbody>
+
+                        </table>
+
+
+                    </div> <!-- table wrapper -->
+
+                    <p class="submit">
+                        <input type="submit" name="yasbil_set_user_enabled" id="submit-enable"
+                               class="button button-primary" value="Enable Users">
+                        &nbsp;&nbsp;
+                        <input type="submit" name="yasbil_set_user_disabled" id="submit-deactivate"
+                               class="button button-secondary" value="Disable Users">
+                    </p>
+                    </form>
+
+                    <script>
+                        jQuery('#table_project_<?=$project_name?>').DataTable({
+                            pageLength: 100
+                        });
+                    </script>
+
+                    <?php
+                } else {
+                    _e( 'No participants in this YASBIL Project. 
+                    Assign Participants to projects by editing their User Profiles.' );
+                } // end if of WP Users
+
+                } // end: project loop
+            }
+            // If there are no YASBIL Projects, display a message.
+            else{
+                _e( 'No YASBIL Projects are available. Create some from the YASBIL-WP Menu.' );
+            }
+
+            ?>
+
+
+        </div> <!-- end div.wrap-->
+
+
+
+
+
+
+
+
+        <?php
+
+    } // summary render html function
+
+
 
 
     /**
@@ -385,7 +665,6 @@ class YASBIL_WP_Admin {
             else
             {
                 // if no user-id is set, render the summary page
-                //$this->yasbil_html_admin_summary_data(); (NO!)
                 //redirect to summary page
 
                 $redirect_url = admin_url('admin.php?page=yasbil_wp-summary', 'https');
@@ -419,9 +698,9 @@ class YASBIL_WP_Admin {
 
         global $wpdb;
 
-        $project_detail = $this->yasbil_get_project_for_user($user_id);
+        $project_detail = $this->yasbil_get_user_project($user_id);
         $project_name = $project_detail[1];
-        $user_codename = $user_data->user_login;
+        $user_name = $user_data->user_login;
 
 ?>
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
@@ -446,17 +725,17 @@ class YASBIL_WP_Admin {
             <h1>Participant Details</h1>
 
             <p style="font-size:16px">
-                <b>Project Name:</b>
+                <b>Project:</b>
                 <?=$project_name?>
 
                 &nbsp; &bull; &nbsp;
 
-                <b>Participant ID:</b>
+                <b>User ID:</b>
                 <?=$user_id?>
                 &nbsp; &bull; &nbsp;
 
-                <b>Participant Codename:</b>
-                <?=$user_codename?>
+                <b>User Name:</b>
+                <?=$user_name?>
             </p>
 <?php   }
         else
@@ -476,69 +755,7 @@ class YASBIL_WP_Admin {
 <?php   }
 ?>
 
-            <p>All timestamps are in UTC.</p>
-
-            <!-- explanation of transition type and qualifiers --->
-            <!--table>
-                <thead>
-                    <tr>
-                        <th>
-                            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType">
-                                Transition Type (MDN)
-                            </a>
-                        </th>
-                        <th>
-                            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier">
-                                Transition Qualifier (MDN)
-                            </a>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <dl>
-                                <dt><a id="value-link"></a>"link"</dt>
-                                <dd>The user clicked a link in another page.</dd>
-                                <dt><a id="value-typed"></a>"typed"</dt>
-                                <dd>The user typed the URL into the address bar. This is also used if the user started typing into the address bar, then selected a URL from the suggestions it offered. See also "generated".</dd>
-                                <dt><a id="value-auto_bookmark"></a>"auto_bookmark"</dt>
-                                <dd>The user clicked a bookmark or an item in the browser history.</dd>
-                                <dt><a id="value-auto_subframe"></a>"auto_subframe"</dt>
-                                <dd>Any nested iframes that are automatically loaded by their parent.</dd>
-                                <dt><a id="value-manual_subframe"></a>"manual_subframe"</dt>
-                                <dd>Any nested iframes that are loaded as an explicit user action. Loading such an iframe will generate an entry in the back/forward navigation list.</dd>
-                                <dt><a id="value-generated"></a>"generated"</dt>
-                                <dd>The user started typing in the address bar, then clicked on a suggested entry that didn't contain a URL.</dd>
-                                <dt><a id="value-start_page"></a>"start_page"</dt>
-                                <dd>The page was passed to the command line or is the start page.</dd>
-                                <dt><a id="value-form_submit"></a>"form_submit"</dt>
-                                <dd>The user submitted a form. Note that in some situations, such as when a form uses a script to submit its contents, submitting a form does not result in this transition type.</dd>
-                                <dt><a id="value-reload"></a>"reload"</dt>
-                                <dd>The user reloaded the page, using the Reload button or by pressing Enter in the address bar. This is also used for session restore and reopening closed tabs.</dd>
-                                <dt><a id="value-keyword"></a>"keyword"</dt>
-                                <dd>The URL was generated using a <a target="_blank" href="https://support.mozilla.org/en-US/kb/how-search-from-address-bar" class="external" rel=" noopener">keyword search</a> configured by the user.</dd>
-                                <dt><a id="value-keyword_generated"></a>"keyword_generated"</dt>
-                                <dd>Corresponds to a visit generated for a keyword.</dd>
-                            </dl>
-                        </td>
-
-                        <td>
-                            <dl>
-                                <dt>"client_redirect"</dt>
-                                <dd>Redirect(s) caused by JavaScript running in the page or a "refresh" pragma in the page's <a href="/en-US/docs/Web/HTML/Element/meta">meta</a> tag.</dd>
-                                <dt>"server_redirect"</dt>
-                                <dd>Redirect(s) caused by a <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_Redirection" class="external" rel=" noopener">3XX HTTP status code</a> sent from the server.</dd>
-                                <dt>"forward_back"</dt>
-                                <dd>The user used the forward or back button to trigger the navigation.</dd>
-                                <dt>"from_address_bar"</dt>
-                                <dd>The user triggered the navigation from the address bar.</dd>
-                            </dl>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            -->
+            <p>All timestamps are in participant's local time.</p>
 <?php
         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
 
@@ -546,7 +763,7 @@ class YASBIL_WP_Admin {
             SELECT *
             FROM $tbl_sessions s
             WHERE 1=1
-            and s.wp_userid = %s
+            and s.user_id = %s
             ORDER BY s.session_start_ts desc
         ";
 
@@ -559,26 +776,37 @@ class YASBIL_WP_Admin {
         foreach ($db_res_sessions as $row_s)
         {
             $session_guid = $row_s['session_guid'];
+            $tz_off = $row_s['session_tz_offset'];
 ?>
             <hr style="border: 1px solid #aaa; margin: 20px 0px 10px;">
 
             <h1>
                 Session ID:
                 <?=$row_s['session_id']?>
+                (<?=$this->yasbil_truncate_str($row_s['session_guid'],9)?>)
             </h1>
 
             <p style="font-size:16px">
-                <b>Session Start:</b>
-                <?=$this->yasbil_milli_to_str($row_s['session_start_ts'], true)?>
+                <b>Start Time:</b>
+                <?=$this->yasbil_milli_to_str($row_s['session_start_ts'], $tz_off, true)?>
                 &nbsp; &bull; &nbsp;
-                <b>Session End:</b>
-                <?=$this->yasbil_milli_to_str($row_s['session_end_ts'], true)?>
+                <b>End Time:</b>
+                <?=$this->yasbil_milli_to_str($row_s['session_end_ts'], $tz_off, true)?>
                 &nbsp; &bull; &nbsp;
                 <b>Duration:</b>
                 <?=$this->yasbil_display_dur_diff($row_s['session_start_ts'], $row_s['session_end_ts'])?>
+
+                <br/>
+
+                <b>Platform:</b>
+                <?="{$row_s['platform_os']} {$row_s['platform_arch']} {$row_s['platform_nacl_arch']}"?>
                 &nbsp; &bull; &nbsp;
-                <b>Sync Time:</b>
-                <?=$this->yasbil_milli_to_str($row_s['sync_ts'], true)?>
+                <b>Browser:</b>
+                <?="{$row_s['browser_vendor']} {$row_s['browser_name']} {$row_s['browser_version']}"?>
+                &nbsp; &bull; &nbsp;
+                <b>Synced:</b>
+                <?=$this->yasbil_milli_to_str($row_s['sync_ts'], $tz_off, true)?>
+
 
                 <br/><br/>
 
@@ -593,7 +821,7 @@ class YASBIL_WP_Admin {
                     FROM $tbl_pagevisits pv
                     WHERE 1=1
                     and pv.session_guid = %s
-                    and TRIM(pv.pv_url) LIKE '%://%'
+                    group by pv.hist_ts
                     ORDER BY pv.pv_ts asc
                 ";
 
@@ -618,22 +846,16 @@ class YASBIL_WP_Admin {
 
                             <!-- visible-->
                             <th>Timestamp</th>
-                            <th>Window</th>
-                            <th>Tab</th>
-                            <th>
-                                Transition <a target="_blank"
-                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType"
-                                >Type</a>
-                            </th>
-                            <th>
-                                Transition <a target="_blank"
-                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier"
-                                >Qualifier</a>
-                            </th>
-                            <th>Search Engine</th>
-                            <th>Search Query</th>
-                            <th>URL Host</th>
+                            <th>Window# | Tab#</th>
+                            <th>URL</th>
+                            <th>Navigation Event</th>
                             <th>Page Title</th>
+                            <th>
+                                <a target="_blank"
+                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
+                                >Transition</a>
+                            </th>
+                            <th>Search Engine, Search Query</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -656,20 +878,17 @@ class YASBIL_WP_Admin {
                     $arr_tab[$row_pv['tab_id']] = $tab_num++;
                 }
 
-                $time = $this->yasbil_milli_to_str($row_pv['pv_ts']);
+                $time = $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off);
 
                 $window = $arr_win[$row_pv['win_id']];
                 $tab = $arr_tab[$row_pv['tab_id']];
 
                 //$transition_type = $row_pv['pv_transition_type'];
 
-                $url_host = $this->yasbil_truncate_str($row_pv['pv_hostname']);
-
-                $title = '<a target="_blank" title="'.$row_pv['pv_title'].'" href="'. esc_url($row_pv['pv_url']) . '">'
-                    . $this->yasbil_truncate_str($row_pv['pv_title'])
+                $url_host = '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
+                    . $row_pv['pv_hostname']
                     . '</a>';
 
-                //$sync_time = $this->yasbil_milli_to_str($row_pv['sync_ts']);
 ?>
                     <tr>
                         <!-- hidden; for export-->
@@ -679,14 +898,20 @@ class YASBIL_WP_Admin {
 
                         <!--visible-->
                         <td><?=$time?></td>
-                        <td><?=$window?></td>
-                        <td><?=$tab?></td>
-                        <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
-                        <td><?=$row_pv['pv_transition_qualifier']?></td>
-                        <td><?=$row_pv['pv_srch_engine']?></td>
-                        <td><?=$row_pv['pv_srch_qry']?></td>
+                        <td>
+                            <?=$window?> | <?=$tab?>
+                        </td>
                         <td><?=$url_host?></td>
-                        <td><?=$title?></td>
+                        <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
+                        <td>
+                            <?=str_replace(
+                                ['.',  '+',  '?',  '/',  '='],
+                                ['. ', '+ ', '? ', '/ ', '= '],
+                                $row_pv['pv_title']
+                            )?>
+                        </td>
+                        <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
+                        <td><?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?></td>
                     </tr>
 <?php
             } // --------- end pagevisit loop -------------
@@ -723,160 +948,12 @@ class YASBIL_WP_Admin {
 
 
 
-    /**
-     * Renders HTML to view Summary Data
-     * Only Visible To admins.
-     * Provides URLs to view per-user data
-     */
-    public function yasbil_html_admin_summary_data()
-    {
-        //page is only for admins
-        // redundant - probably
-        if(!current_user_can('administrator')) {
-            return;
-        }
-
-        global $wpdb;
-?>
-
-        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
-        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
-
-        <div class="wrap">
-            <h1>YASBIL Data Collection Summary</h1>
-
-            <p>All timestamps are in UTC.</p>
-
-<?php
-
-        // Get the terms (project names) of the 'yasbil_projects' taxonomy.
-        $arr_yasbil_projects = get_terms( 'yasbil_projects', array( 'hide_empty' => false ) );
-        if ( !empty( $arr_yasbil_projects ) )
-        {
-            foreach ($arr_yasbil_projects as $proj)
-            {
-                $project_id = $proj->term_id; // constant; use Select distinct on this
-                $project_name = strtoupper($proj->slug) ; // should be constant; can be varied;
-                $project_nice_name = $proj->name;
-                $project_desc = $proj->description;
-
-?>
-                <hr style="border: 1px solid #aaa; margin: 20px 0px 10px;">
-
-                <h1>
-                    Project <?=$project_id?>: <?=$project_name?>
-                </h1>
-
-                <p style="font-size:16px">
-                    <b>Full Name:</b>
-                    <?=$project_nice_name?>
-                    &nbsp; &bull; &nbsp;
-                    <b>Description:</b>
-                    <?=$project_desc?>
-
-                    <br/><br/>
-
-                    List of Participants:
-                </p>
-
-<?php
-                $arr_participants = get_objects_in_term($project_id, 'yasbil_projects');
-
-                // not WP_Error and not empty array
-                if(!is_wp_error( $arr_participants ) && !empty($arr_participants))
-                {
-?>
-                    <div class="table-wrapper"
-                         style="padding: 10px; background: white"
-                    >
-
-                        <table id="table_project_<?=$project_name?>" class="display">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Code Name</th>
-                                    <th>Total Sessions</th>
-                                    <th>Total Page Visits</th>
-                                    <th>Avg Session Duration</th>
-                                    <th>Page Visit per Session</th>
-                                    <th>Last Browsing Activity</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-<?php
-                    foreach ($arr_participants as $user_id)
-                    {
-                        $user_info = get_userdata($user_id);
-                        $user_data_url = admin_url('admin.php?page=yasbil_wp&user_id='.$user_id, 'https');
-                        $code_name = '<a title="View Uploaded Data" target="_blank" href="'.$user_data_url.'">'
-                            .$user_info->user_login
-                            .'</a>';
-
-                        $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
-                        $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
-                        
-                        //fix: added IF() for when session_end_ts = 0 (not recorded)
-
-                        $sql_select_summary_stats = "
-                            SELECT COUNT(DISTINCT s.session_guid) session_ct
-                                , COUNT(DISTINCT pv.pv_guid) pv_ct
-                                , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
-                                , (COUNT(DISTINCT pv.pv_guid) / COUNT(DISTINCT s.session_guid) ) pv_per_session
-                                , MAX(pv.pv_ts) last_activity
-                            FROM $tbl_sessions s,
-                                $tbl_pagevisits pv
-                            WHERE 1=1 
-                            AND s.session_guid = pv.session_guid
-                            AND s.wp_userid = %s
-                        ";
-
-                        $row_stats = $wpdb->get_row(
-                            $wpdb->prepare($sql_select_summary_stats, $user_id),
-                            ARRAY_A
-                        );
-
-?>
-                                <tr>
-                                    <td><?=$user_id?></td>
-                                    <td><?=$code_name?></td>
-                                    <td><?=$row_stats['session_ct']?></td>
-                                    <td><?=$row_stats['pv_ct']?></td>
-                                    <td><?=$this->yasbil_display_dur($row_stats['avg_session_dur_ms'])?></td>
-                                    <td><?=$row_stats['pv_per_session']?></td>
-                                    <td><?=$this->yasbil_milli_to_str($row_stats['last_activity'])?></td>
-                                </tr>
-
-<?php
-                    } // --------- end participants loop -------------
-?>
-                            </tbody>
-
-                        </table>
-                    </div> <!-- table wrapper -->
-
-                <script>
-                    jQuery('#table_project_<?=$project_name?>').DataTable({
-                        pageLength: 100
-                    });
-                </script>
-
-<?php
-                } else {
-                    _e( 'No participants in this YASBIL Project. 
-                    Assign Participants to projects by editing their User Profiles.' );
-                } // end if of WP Users
-
-            } // end: project loop
-        }
-        // If there are no YASBIL Projects, display a message.
-        else{
-            _e( 'No YASBIL Projects are available. Create some from the YASBIL-WP Menu.' );
-        }
-
-?>
 
 
-        </div> <!-- end div.wrap-->
+
+
+
+//-------------------------- END: HTML Renders --------------------------------
 
 
 
@@ -884,44 +961,85 @@ class YASBIL_WP_Admin {
 
 
 
+//-------------------------- START: Data Sync Functions --------------------------------
 
-        <?php
-
-    } // summary render html function
-
-
-
-
-//-------------------------- End: Page Render --------------------------------
 
     /**
-     * Unsets the 'posts' page and adds the 'users' page as the parent
-     * on the manage YASBIL Projects admin page.
+     * Check if a given request has access to sync yasbil data:
+     * check authentication; check if user is active, and assigned to project
      *
-     * from: https://www.nopio.com/blog/add-user-taxonomy-wordpress/
-     * if previous fn doesn't work, try this
-     * @since    1.0.0
+     * @param WP_REST_Request $request Full data about the request.
+     * @return WP_Error|bool
      */
-    /*public function yasbil_set_yasbil_projects_submenu_active2( $submenu_file )
+    function yasbil_sync_check_permission( $request )
     {
-        global $parent_file;
-        if( 'edit-tags.php?taxonomy=yasbil_projects' == $submenu_file ) {
-            $parent_file = 'users.php';
+        /**
+         * Restrict YASBIL endpoints to only users who have the read capability (subscriber and above).
+         */
+        // https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#permissions-callback
+
+        $result = false;
+
+        if(current_user_can( 'read' ))
+        {
+            $current_user = wp_get_current_user();
+            $user_id = $current_user->ID;
+
+            $user_status = $this->yasbil_get_user_status($user_id);
+
+            //if user is enabled to sync data
+            if($user_status === "ENABLED")
+            {
+                //if user is assigned to a project
+                $project_detail = $this->yasbil_get_user_project($user_id);
+
+                // project_id is not the default project (0)
+                // ie user is actually assigned to a project
+                if($project_detail[0] !== 0)
+                    $result = true;
+            }
         }
-        return $submenu_file;
-    }*/
+
+
+        return $result;
+        //or check current user is in term: + taxonomy new permission: 'participant?'
+
+        /***
+        if ( ! current_user_can( 'read' ) )
+        {
+        return new WP_Error( 'rest_forbidden', esc_html__( 'OMG you can not view private data.', 'my-text-domain' ), array( 'status' => 401 ) );
+        }
+
+        // This is a black-listing approach. You could alternatively do this via white-listing,
+        // by returning false here and changing the permissions check.
+        return true;
+         *****/
+    }
+
+
+
+    function yasbil_sync_check_connection( $request )
+    {
+        $response_body = [];
+        $response_body['code'] = 'yasbil_connection_success';
+
+        $response = new WP_REST_Response( $response_body );
+        $response->set_status( 201 );
+
+        return $response;
+    }
 
 
 
 
-
-
-//-------------------------- SESSIONS Sync --------------------------------
-    public function yasbil_sync_sessions_table( $request )
+    // single function to sync all tables
+    public function yasbil_sync_table( $request )
     {
         /***
         JSON body format:
         {
+        'table_name': 'yasbil_session_webnav',
+        'client_pk_col': 'webnav_guid',
         'num_rows': 23, (not required)
         'data_rows': [ {row 1 obj}, {row 2 obj}, ... {row n obj}, ]
         }
@@ -929,113 +1047,138 @@ class YASBIL_WP_Admin {
 
         try
         {
+            //TODO: check authentication (whether participant is active)
+
+            global $wpdb;
+
             $json_body = $request->get_json_params();
 
             $current_user = wp_get_current_user();
-            $wp_userid = $current_user->ID;
-            $wp_username = $current_user->user_login;
+            $user_id = $current_user->ID;
+            $user_name = $current_user->user_login;
 
-            $project_detail = $this->yasbil_get_project_for_user($wp_userid);
+            // sanitize_key(): Keys are used as internal identifiers. Lowercase
+            // alphanumeric characters, dashes, and underscores are allowed.
+            $tbl_name = $wpdb->prefix . sanitize_text_field($json_body['table_name']);
+            $client_pk_col = sanitize_text_field($json_body['client_pk_col']);
+
+            $project_detail = $this->yasbil_get_user_project($user_id);
             $project_id = $project_detail[0];
             $project_name = $project_detail[1];
 
             $sync_ts = $this->yasbil_get_millitime();
+            $data_rows = $json_body['data_rows'];
 
-            // $num_rows = $json_body['num_rows'];
-            $data_rows = $json_body['data_rows']; //array
+            // auto increment columns; need not be inserted
+            $arr_auto_cols = [
+                "session_id",
+                "pv_id",
+                "m_id",
+                "webnav_id",
+            ];
 
-            global $wpdb;
+            // comma separated list of all columns
+            $arr_col_names = $wpdb->get_col("DESC {$tbl_name}", 0);
+            $sql_col_csv = ""; //implode( ', ', $arr_col_names );
+            $sql_placeholder_csv = "";
 
-            // to insert multiple rows
-            // https://stackoverflow.com/a/12374838
-            // https://wordpress.stackexchange.com/a/328037
+            // loop over columns
+            foreach ( $arr_col_names as $col_name )
+            {
+                if(!in_array($col_name, $arr_auto_cols))
+                {
+                    $sql_col_csv .= "$col_name,";
+                    $sql_placeholder_csv .= "%s,";
+                }
+            }
 
-            $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
-            $sql_insert_session = "
-                INSERT INTO $tbl_sessions (
-                    session_guid, 
-                    project_id,
-                    project_name,
-                    wp_userid,
-                    participant_name,
-                    platform_os,
-                    platform_arch,
-                    platform_nacl_arch,
-                    browser_name,
-                    browser_vendor,
-                    browser_version,
-                    browser_build_id,
-                    session_tz_str,
-                    session_tz_offset,
-                    session_start_ts,
-                    session_end_ts,
-                    sync_ts
-                ) VALUES ";
+            //remove last comma(s)
+            $sql_col_csv = rtrim($sql_col_csv, ', ');
+            $sql_placeholder_csv = rtrim($sql_placeholder_csv, ', ');
+
+            // sql insert statement
+            $sql_insert = "INSERT INTO $tbl_name ($sql_col_csv) VALUES";
 
             $values = array();
             $place_holders = array();
 
             foreach ( $data_rows as $row )
             {
-                array_push(
-                    $values,
-                    sanitize_text_field($row['session_guid']),
-                    $project_id,
-                    $project_name,
-                    $wp_userid,
-                    $wp_username,
-                    sanitize_text_field($row['platform_os']),
-                    sanitize_text_field($row['platform_arch']),
-                    sanitize_text_field($row['platform_nacl_arch']),
-                    sanitize_text_field($row['browser_name']),
-                    sanitize_text_field($row['browser_vendor']),
-                    sanitize_text_field($row['browser_version']),
-                    sanitize_text_field($row['browser_build_id']),
-                    sanitize_text_field($row['session_tz_str']),
-                    sanitize_text_field($row['session_tz_offset']),
-                    sanitize_text_field($row['session_start_ts']),
-                    sanitize_text_field($row['session_end_ts']),
-                    $sync_ts
-                );
-                $place_holders[] = "(
-                    %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, 
-                    %s, %s
-                )";
-            }
+                // loop over columns
+                foreach ( $arr_col_names as $col_name )
+                {
+                    if(!in_array($col_name, $arr_auto_cols))
+                    {
+                        switch ($col_name)
+                        {
+                            case "project_id":
+                                $values[] = $project_id;
+                                break;
+                            case "project_name":
+                                $values[] = $project_name;
+                                break;
+                            case "user_id":
+                                $values[] = $user_id;
+                                break;
+                            case "user_name":
+                                $values[] = $user_name;
+                                break;
+                            case "sync_ts":
+                                $values[] = $sync_ts;
+                                break;
+                            default:
+                                //options for sanitizing
+                                // sanitize_text_field
+                                // sanitize_textarea_field
+                                // mysqli_real_escape_string
+                                // htmlentities
+                                /*function test_input($data) {
+                                    $data = trim($data);
+                                    $data = stripslashes($data);
+                                    $data = htmlspecialchars($data);
+                                    return $data;
+                                }*/
+                                // using "prepare" so perhaps not required
+                                $values[] = $row[$col_name];
+                                break;
+                        }
+                    }
+                } // end: loop over cols
+                $place_holders[] = "($sql_placeholder_csv)";
+            } //end: loop over data rows
 
-            $sql_insert_session .= implode( ', ', $place_holders );
-            if( false === $wpdb->query( $wpdb->prepare( "$sql_insert_session ", $values ) ))
+            $sql_insert .= implode( ', ', $place_holders );
+            if( false === $wpdb->query( $wpdb->prepare( "$sql_insert ", $values ) ))
             {
                 return new WP_Error('db_query_error', $wpdb->last_error, array('status' => 400));
             }
 
-            $synced_sessions = $wpdb->get_results( $wpdb->prepare("
-                SELECT session_guid 
-                FROM $tbl_sessions 
-                WHERE sync_ts = %s",
+            $arr_synced_rows = $wpdb->get_results( $wpdb->prepare("
+                    SELECT $client_pk_col 
+                    FROM $tbl_name 
+                    WHERE sync_ts = %s",
                 $sync_ts
-            ));
+            ), ARRAY_A);
 
-            $arr_synced_session_guids = array();
+            $arr_synced_pks = array();
 
-            foreach ($synced_sessions as $row_sess) {
-                $arr_synced_session_guids[] = $row_sess->session_guid;
+            foreach ($arr_synced_rows as $row) {
+                $arr_synced_pks[] = $row[$client_pk_col];
             }
 
             $return_obj = array();
             $return_obj['sync_ts'] = $sync_ts;
-            $return_obj['guids'] = $arr_synced_session_guids;
+            $return_obj['guids'] = $arr_synced_pks;
 
             $response = new WP_REST_Response( $return_obj );
             $response->set_status( 201 );
 
             return $response;
+
         }
         catch (Exception $e)
         {
-            return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+            return new rest_ensure_response(WP_Error('wp_exception', $e->getMessage(), array('status' => 400)));
         }
     }
 
@@ -1046,137 +1189,68 @@ class YASBIL_WP_Admin {
 
 
 
-//-------------------------- PAGEVISITS Sync --------------------------------
-    public function yasbil_sync_pagevisits_table( $request )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ----------- start: getter and setter functions -----------
+
+    // gets user status: ACTIVE / INACTIVE
+    function yasbil_get_user_status( $user_id )
     {
-        /***
-         JSON body format:
-         {
-            'num_rows': 23, (not required)
-            'data_rows': [ {row 1 obj}, {row 2 obj}, ... {row n obj}, ]
-         }
-        */
+        $yasbil_user_status = get_user_meta($user_id, 'yasbil_user_status', true);
 
-        try
-        {
-            $json_body = $request->get_json_params();
-
-            $current_user = wp_get_current_user();
-            $wp_userid = $current_user->ID;
-            $wp_username = $current_user->user_login;
-
-            $project_detail = $this->yasbil_get_project_for_user($wp_userid);
-            $project_id = $project_detail[0];
-            $project_name = $project_detail[1];
-
-            $sync_ts = $this->yasbil_get_millitime();
-
-            // $num_rows = $json_body['num_rows'];
-            $data_rows = $json_body['data_rows']; //array
-
-            global $wpdb;
-
-            // to insert multiple rows
-            // https://stackoverflow.com/a/12374838
-            // https://wordpress.stackexchange.com/a/328037
-
-
-            $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
-            $sql_insert_pv = "
-                INSERT INTO $tbl_pagevisits (
-                    pv_guid,
-                    session_guid,
-                    project_id,
-                    project_name,
-                    wp_userid,
-                    participant_name,         
-                    win_id,
-                    win_guid,
-                    tab_id,
-                    tab_guid,
-                    pv_ts,
-                    pv_url,
-                    pv_title,
-                    title_upd,
-                    pv_hostname,
-                    pv_rev_hostname,
-                    pv_transition_type,
-                    pv_transition_qualifier,
-                    pv_srch_engine,
-                    pv_srch_qry,
-                    sync_ts
-                ) VALUES ";
-
-            $values = array();
-            $place_holders = array();
-
-            foreach ( $data_rows as $row )
-            {
-                array_push(
-                    $values,
-                    sanitize_text_field($row['pv_guid']),
-                    sanitize_text_field($row['session_guid']),
-                    $project_id,
-                    $project_name,
-                    $wp_userid,
-                    $wp_username,
-                    sanitize_text_field($row['win_id']),
-                    sanitize_text_field($row['win_guid']),
-                    sanitize_text_field($row['tab_id']),
-                    sanitize_text_field($row['tab_guid']),
-                    sanitize_text_field($row['pv_ts']),
-                    esc_url_raw($row['pv_url']),
-                    sanitize_text_field($row['pv_title']),
-                    sanitize_text_field($row['title_upd']),
-                    sanitize_text_field($row['pv_hostname']),
-                    sanitize_text_field($row['pv_rev_hostname']),
-                    sanitize_text_field($row['pv_transition_type']),
-                    sanitize_text_field($row['pv_transition_qualifier']),
-                    sanitize_text_field($row['pv_srch_engine']),
-                    sanitize_text_field($row['pv_srch_qry']),
-                    sanitize_text_field($sync_ts)
-                );
-                $place_holders[] = "(
-                    %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s, 
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s
-                )";
-            }
-
-            $sql_insert_pv .= implode( ', ', $place_holders );
-            if( false === $wpdb->query( $wpdb->prepare( "$sql_insert_pv ", $values ) ))
-            {
-                return new WP_Error('db_query_error', $wpdb->last_error, array('status' => 400));
-            }
-
-            $synced_sessions = $wpdb->get_results( $wpdb->prepare("
-                SELECT pv_guid 
-                FROM $tbl_pagevisits 
-                WHERE sync_ts = %s",
-                $sync_ts
-            ));
-
-            $arr_synced_pv_guids = array();
-
-            foreach ($synced_sessions as $row_sess) {
-                $arr_synced_pv_guids[] = $row_sess->pv_guid;
-            }
-
-            $return_obj = array();
-            $return_obj['sync_ts'] = $sync_ts;
-            $return_obj['guids'] = $arr_synced_pv_guids;
-
-            $response = new WP_REST_Response( $return_obj );
-            $response->set_status( 201 );
-
-            return $response;
+        // if meta key is empty, user is active
+        if( empty($yasbil_user_status)) {
+            return "ENABLED";
         }
-        catch (Exception $e)
+
+        return $yasbil_user_status;
+    }
+
+    // sets the user-status as active
+    function yasbil_set_user_enabled( $user_id )
+    {
+        update_user_meta( $user_id, 'yasbil_user_status', 'ENABLED');
+    }
+
+    // sets the user-status as active
+    function yasbil_set_user_disabled( $user_id )
+    {
+        update_user_meta( $user_id, 'yasbil_user_status', 'DISABLED');
+    }
+
+
+    // Takes a user_id and returns the [term-id, term-slug]
+    // for the single YASBIL project (custom taxonomy)
+    function yasbil_get_user_project( $user_id )
+    {
+        $arr_yasbil_projects = wp_get_object_terms( $user_id,  'yasbil_projects' );
+
+        if ( ! empty( $arr_yasbil_projects ) )
         {
-            return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+            if ( ! is_wp_error( $arr_yasbil_projects ) )
+            {
+                $term = $arr_yasbil_projects[0];
+                //available properties:
+                // // https://developer.wordpress.org/reference/classes/wp_term/
+                return array($term->term_id, strtoupper($term->slug));
+            }
         }
+
+        return array(0, "DEFAULT_PROJECT");
     }
 
 
@@ -1184,20 +1258,13 @@ class YASBIL_WP_Admin {
 
 
 
+// ----------- end: getter and setter functions -----------
 
 
 
+// ----------- start: utility functions  -----------
 
-
-
-
-
-
-
-
-
-
-    // to get current time in milliseconds
+    // get current time in milliseconds
     // https://stackoverflow.com/a/3656934
     public function yasbil_get_millitime()
     {
@@ -1210,9 +1277,13 @@ class YASBIL_WP_Admin {
     }
 
 
-    public function yasbil_milli_to_str($milli_time, $incl_day=false)
+    public function yasbil_milli_to_str($milli_time, $tz_offset_mins=0, $incl_day=false)
     {
-        $sec_time = $milli_time / 1000;
+        //$sec_time = $milli_time / 1000;
+        $sec_time = $milli_time / 1000 + $tz_offset_mins*60;
+
+        if($sec_time <= 0)
+            return "-";
 
         if($incl_day)
             return strtoupper(date('Y-m-d, D, H:i:s', $sec_time));
@@ -1233,38 +1304,10 @@ class YASBIL_WP_Admin {
     }
 
 
-    /**
-     * Check if a given request has access to sync yasbil data (assuming it checks austhentication)
-     *
-     * @param WP_REST_Request $request Full data about the request.
-     * @return WP_Error|bool
-     */
-    function yasbil_sync_permissions_check( $request )
-    {
-        /**
-         * Restrict YASBIL endpoints to only users who have the read capability (subscriber and above).
-         */
-        // https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#permissions-callback
-
-        return current_user_can( 'read' );
-        //or check current user is in term: + taxonomy new permission: 'participant?'
-
-        /***
-        if ( ! current_user_can( 'read' ) )
-        {
-            return new WP_Error( 'rest_forbidden', esc_html__( 'OMG you can not view private data.', 'my-text-domain' ), array( 'status' => 401 ) );
-        }
-
-        // This is a black-listing approach. You could alternatively do this via white-listing,
-        // by returning false here and changing the permissions check.
-        return true;
-        *****/
-    }
 
 
-    /**
-     * Takes a variable and returns sanitized output / default value
-     */
+
+    //Takes a variable and returns sanitized output / default value
     public function yasbil_nvl($test_val, $default_val)
     {
         if(!isset($test_val) || trim($test_val)==='')
@@ -1274,35 +1317,18 @@ class YASBIL_WP_Admin {
     }
 
 
-    /**
-     * Takes a userid and returns the [term-id, term-slug] for the single YASBIL project (custom taxonomy)
-     * @param $userid
-     */
-    function yasbil_get_project_for_user( $userid )
-    {
-        $arr_yasbil_projects = wp_get_object_terms( $userid,  'yasbil_projects' );
 
-        if ( ! empty( $arr_yasbil_projects ) )
-        {
-            if ( ! is_wp_error( $arr_yasbil_projects ) )
-            {
-                $term = $arr_yasbil_projects[0];
-                //available properties: // https://developer.wordpress.org/reference/classes/wp_term/
-                return array($term->term_id, strtoupper($term->slug));
-            }
-        }
 
-        return array(0, "DEFAULT_PROJECT");
-    }
 
-    /**
-     * Displays difference between two milliseconds in appropriate units
-     */
+
+
+    // displays difference between two milliseconds in appropriate units
     function yasbil_display_dur_diff($milli_st, $milli_end)
     {
         return $this->yasbil_display_dur($milli_end - $milli_st);
 
     }
+
 
     function yasbil_display_dur($diff_ms)
     {
@@ -1379,5 +1405,306 @@ class YASBIL_WP_Admin {
 		wp_enqueue_script( $this->yasbil_wp, plugin_dir_url( __FILE__ ) . 'js/yasbil-wp-admin.js', array( 'jquery' ), $this->version, false );
 
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * Unsets the 'posts' page and adds the 'users' page as the parent
+     * on the manage YASBIL Projects admin page.
+     *
+     * from: https://www.nopio.com/blog/add-user-taxonomy-wordpress/
+     * if previous fn doesn't work, try this
+     * @since    1.0.0
+     */
+    /*public function yasbil_set_yasbil_projects_submenu_active2( $submenu_file )
+    {
+        global $parent_file;
+        if( 'edit-tags.php?taxonomy=yasbil_projects' == $submenu_file ) {
+            $parent_file = 'users.php';
+        }
+        return $submenu_file;
+    }*/
+
+
+
+
+
+
+//-------------------------- SESSIONS Sync --------------------------------
+//    public function yasbil_sync_sessions_table( $request )
+//    {
+//        /***
+//        JSON body format:
+//        {
+//        'num_rows': 23, (not required)
+//        'data_rows': [ {row 1 obj}, {row 2 obj}, ... {row n obj}, ]
+//        }
+//         */
+//
+//        try
+//        {
+//            $json_body = $request->get_json_params();
+//
+//            $current_user = wp_get_current_user();
+//            $user_id = $current_user->ID;
+//            $user_name = $current_user->user_login;
+//
+//            $project_detail = $this->yasbil_get_user_project($user_id);
+//            $project_id = $project_detail[0];
+//            $project_name = $project_detail[1];
+//
+//            $sync_ts = $this->yasbil_get_millitime();
+//
+//            // $num_rows = $json_body['num_rows'];
+//            $data_rows = $json_body['data_rows']; //array
+//
+//            global $wpdb;
+//
+//            // to insert multiple rows
+//            // https://stackoverflow.com/a/12374838
+//            // https://wordpress.stackexchange.com/a/328037
+//
+//            $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
+//            $sql_insert_session = "
+//                INSERT INTO $tbl_sessions (
+//                    session_guid,
+//                    project_id,
+//                    project_name,
+//                    wp_user_id,
+//                    participant_name,
+//                    platform_os,
+//                    platform_arch,
+//                    platform_nacl_arch,
+//                    browser_name,
+//                    browser_vendor,
+//                    browser_version,
+//                    browser_build_id,
+//                    session_tz_str,
+//                    session_tz_offset,
+//                    session_start_ts,
+//                    session_end_ts,
+//                    sync_ts
+//                ) VALUES ";
+//
+//            $values = array();
+//            $place_holders = array();
+//
+//            foreach ( $data_rows as $row )
+//            {
+//                array_push(
+//                    $values,
+//                    sanitize_text_field($row['session_guid']),
+//                    $project_id,
+//                    $project_name,
+//                    $user_id,
+//                    $user_name,
+//                    sanitize_text_field($row['platform_os']),
+//                    sanitize_text_field($row['platform_arch']),
+//                    sanitize_text_field($row['platform_nacl_arch']),
+//                    sanitize_text_field($row['browser_name']),
+//                    sanitize_text_field($row['browser_vendor']),
+//                    sanitize_text_field($row['browser_version']),
+//                    sanitize_text_field($row['browser_build_id']),
+//                    sanitize_text_field($row['session_tz_str']),
+//                    sanitize_text_field($row['session_tz_offset']),
+//                    sanitize_text_field($row['session_start_ts']),
+//                    sanitize_text_field($row['session_end_ts']),
+//                    $sync_ts
+//                );
+//                $place_holders[] = "(
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s
+//                )";
+//            }
+//
+//            $sql_insert_session .= implode( ', ', $place_holders );
+//            if( false === $wpdb->query( $wpdb->prepare( "$sql_insert_session ", $values ) ))
+//            {
+//                return new WP_Error('db_query_error', $wpdb->last_error, array('status' => 400));
+//            }
+//
+//            $synced_sessions = $wpdb->get_results( $wpdb->prepare("
+//                SELECT session_guid
+//                FROM $tbl_sessions
+//                WHERE sync_ts = %s",
+//                $sync_ts
+//            ));
+//
+//            $arr_synced_session_guids = array();
+//
+//            foreach ($synced_sessions as $row_sess) {
+//                $arr_synced_session_guids[] = $row_sess->session_guid;
+//            }
+//
+//            $return_obj = array();
+//            $return_obj['sync_ts'] = $sync_ts;
+//            $return_obj['guids'] = $arr_synced_session_guids;
+//
+//            $response = new WP_REST_Response( $return_obj );
+//            $response->set_status( 201 );
+//
+//            return $response;
+//        }
+//        catch (Exception $e)
+//        {
+//            return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+//        }
+//    }
+
+
+
+
+
+
+
+
+//-------------------------- PAGEVISITS Sync --------------------------------
+//    public function yasbil_sync_pagevisits_table( $request )
+//    {
+//        /***
+//         JSON body format:
+//         {
+//            'num_rows': 23, (not required)
+//            'data_rows': [ {row 1 obj}, {row 2 obj}, ... {row n obj}, ]
+//         }
+//        */
+//
+//        try
+//        {
+//            $json_body = $request->get_json_params();
+//
+//            $current_user = wp_get_current_user();
+//            $user_id = $current_user->ID;
+//            $user_name = $current_user->user_login;
+//
+//            $project_detail = $this->yasbil_get_user_project($user_id);
+//            $project_id = $project_detail[0];
+//            $project_name = $project_detail[1];
+//
+//            $sync_ts = $this->yasbil_get_millitime();
+//
+//            // $num_rows = $json_body['num_rows'];
+//            $data_rows = $json_body['data_rows']; //array
+//
+//            global $wpdb;
+//
+//            // to insert multiple rows
+//            // https://stackoverflow.com/a/12374838
+//            // https://wordpress.stackexchange.com/a/328037
+//
+//
+//            $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+//            $sql_insert_pv = "
+//                INSERT INTO $tbl_pagevisits (
+//                    pv_guid,
+//                    session_guid,
+//                    project_id,
+//                    project_name,
+//                    wp_user_id,
+//                    participant_name,
+//                    win_id,
+//                    win_guid,
+//                    tab_id,
+//                    tab_guid,
+//                    pv_ts,
+//                    pv_url,
+//                    pv_title,
+//                    title_upd,
+//                    pv_hostname,
+//                    pv_rev_hostname,
+//                    pv_transition_type,
+//                    pv_transition_qualifier,
+//                    pv_srch_engine,
+//                    pv_srch_qry,
+//                    sync_ts
+//                ) VALUES ";
+//
+//            $values = array();
+//            $place_holders = array();
+//
+//            foreach ( $data_rows as $row )
+//            {
+//                array_push(
+//                    $values,
+//                    sanitize_text_field($row['pv_guid']),
+//                    sanitize_text_field($row['session_guid']),
+//                    $project_id,
+//                    $project_name,
+//                    $user_id,
+//                    $user_name,
+//                    sanitize_text_field($row['win_id']),
+//                    sanitize_text_field($row['win_guid']),
+//                    sanitize_text_field($row['tab_id']),
+//                    sanitize_text_field($row['tab_guid']),
+//                    sanitize_text_field($row['pv_ts']),
+//                    esc_url_raw($row['pv_url']),
+//                    sanitize_text_field($row['pv_title']),
+//                    sanitize_text_field($row['title_upd']),
+//                    sanitize_text_field($row['pv_hostname']),
+//                    sanitize_text_field($row['pv_rev_hostname']),
+//                    sanitize_text_field($row['pv_transition_type']),
+//                    sanitize_text_field($row['pv_transition_qualifier']),
+//                    sanitize_text_field($row['pv_srch_engine']),
+//                    sanitize_text_field($row['pv_srch_qry']),
+//                    $sync_ts
+//                );
+//                $place_holders[] = "(
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s, %s, %s, %s,
+//                    %s, %s, %s, %s, %s,
+//                    %s
+//                )";
+//            }
+//
+//            $sql_insert_pv .= implode( ', ', $place_holders );
+//            if( false === $wpdb->query( $wpdb->prepare( "$sql_insert_pv ", $values ) ))
+//            {
+//                return new WP_Error('db_query_error', $wpdb->last_error, array('status' => 400));
+//            }
+//
+//            $synced_sessions = $wpdb->get_results( $wpdb->prepare("
+//                SELECT pv_guid
+//                FROM $tbl_pagevisits
+//                WHERE sync_ts = %s",
+//                $sync_ts
+//            ));
+//
+//            $arr_synced_pv_guids = array();
+//
+//            foreach ($synced_sessions as $row_sess) {
+//                $arr_synced_pv_guids[] = $row_sess->pv_guid;
+//            }
+//
+//            $return_obj = array();
+//            $return_obj['sync_ts'] = $sync_ts;
+//            $return_obj['guids'] = $arr_synced_pv_guids;
+//
+//            $response = new WP_REST_Response( $return_obj );
+//            $response->set_status( 201 );
+//
+//            return $response;
+//        }
+//        catch (Exception $e)
+//        {
+//            return new WP_Error('wp_exception', $e->getMessage(), array('status' => 400));
+//        }
+//    }
+
+
+
+
 
 }

@@ -40,6 +40,10 @@ class YASBIL_WP_Activator
 
         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
         $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+        $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
+        $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
+        $tbl_webnav = $wpdb->prefix . "yasbil_session_webnav";
+        $tbl_largestring = $wpdb->prefix . "yasbil_largestring";
 
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -50,8 +54,8 @@ class YASBIL_WP_Activator
             session_guid varchar(50) NOT NULL,
             project_id int(11) NULL DEFAULT NULL,
             project_name varchar(50) NULL DEFAULT NULL,
-            wp_userid bigint(20) unsigned NOT NULL,
-           	participant_name varchar(50) NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
             platform_os varchar(50) NULL DEFAULT NULL,
             platform_arch varchar(50) NULL DEFAULT NULL,
             platform_nacl_arch varchar(50) NULL DEFAULT NULL,
@@ -68,8 +72,8 @@ class YASBIL_WP_Activator
             UNIQUE KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
-	        KEY user_id (wp_userid),
-	        KEY participant_name (participant_name)
+	        KEY user_id (user_id),
+	        KEY user_name (user_name)
         ) $charset_collate;";
 
 
@@ -77,41 +81,214 @@ class YASBIL_WP_Activator
             pv_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             pv_guid varchar(50) NOT NULL,
             session_guid varchar(50) NOT NULL,
+            
             project_id int(11) NULL DEFAULT NULL,
             project_name varchar(50) NULL DEFAULT NULL,
-            wp_userid bigint(20) unsigned NOT NULL,
-           	participant_name varchar(50) NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
+            
             win_id int(11) NULL DEFAULT NULL,
             win_guid varchar(50) NULL DEFAULT NULL,
             tab_id int(11) NULL DEFAULT NULL,
             tab_guid varchar(50) NULL DEFAULT NULL,
+            tab_width int(11) NULL DEFAULT NULL,
+            tab_height int(11) NULL DEFAULT NULL,
+            
             pv_ts bigint(20) unsigned NOT NULL,
+            pv_event varchar(100) NULL DEFAULT NULL,
             pv_url varchar(500) NULL DEFAULT NULL,
             pv_title varchar(500) NULL DEFAULT NULL,
-            title_upd tinyint(4) NULL DEFAULT NULL,
             pv_hostname varchar(100) NULL DEFAULT NULL,
             pv_rev_hostname varchar(100) NULL DEFAULT NULL,
             pv_transition_type varchar(50) NULL DEFAULT NULL,
-            pv_transition_qualifier varchar(100) NULL DEFAULT NULL,
-            pv_srch_engine varchar(50) NULL DEFAULT NULL,
-            pv_srch_qry varchar(500) NULL DEFAULT NULL,
+            pv_page_text longtext NULL DEFAULT NULL,
+            pv_page_html longtext NULL DEFAULT NULL,
+            hist_ts bigint(20) unsigned NOT NULL,
+            hist_visit_ct int(11) NULL DEFAULT NULL,
+            pv_search_engine varchar(50) NULL DEFAULT NULL,
+            pv_search_query varchar(500) NULL DEFAULT NULL,
             sync_ts bigint(20) unsigned NOT NULL,            
+            
             PRIMARY KEY  (pv_id),
             UNIQUE KEY pv_guid (pv_guid),
             KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
-            KEY user_id (wp_userid),
-	        KEY participant_name (participant_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name),
             KEY win_guid (win_guid),
             KEY tab_guid (tab_guid),
+            KEY pv_event (pv_event),
             KEY pv_hostname (pv_hostname),
 	        KEY pv_transition_type (pv_transition_type)
         ) $charset_collate;";
 
+
+        $sql_create_tbl_mouse = "CREATE TABLE $tbl_mouse (
+            m_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            m_guid varchar(50) NOT NULL,
+            session_guid varchar(50) NOT NULL,
+            
+            project_id int(11) NULL DEFAULT NULL,
+            project_name varchar(50) NULL DEFAULT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
+            
+            win_id int(11) NULL DEFAULT NULL,
+            win_guid varchar(50) NULL DEFAULT NULL,
+            tab_id int(11) NULL DEFAULT NULL,
+            tab_guid varchar(50) NULL DEFAULT NULL,
+            
+            m_ts bigint(20) unsigned NOT NULL,
+            m_event varchar(100) NULL DEFAULT NULL,
+            m_url varchar(500) NULL DEFAULT NULL,
+            
+            zoom float(10,4) NULL DEFAULT NULL,
+            page_w int(11) NULL DEFAULT NULL,
+            page_h int(11) NULL DEFAULT NULL,
+            viewport_w int(11) NULL DEFAULT NULL,
+            viewport_h int(11) NULL DEFAULT NULL,
+            browser_w int(11) NULL DEFAULT NULL,
+            browser_h int(11) NULL DEFAULT NULL,
+            page_scrolled_x int(11) NULL DEFAULT NULL,
+            page_scrolled_y int(11) NULL DEFAULT NULL,
+            
+            mouse_x int(11) NULL DEFAULT NULL,
+            mouse_y int(11) NULL DEFAULT NULL,
+            hover_dur int(11) NULL DEFAULT NULL,
+            
+            dom_path text NULL DEFAULT NULL,
+            target_text longtext NULL DEFAULT NULL,
+            target_html longtext NULL DEFAULT NULL,
+            target_width int(11) NULL DEFAULT NULL,
+            target_height int(11) NULL DEFAULT NULL,
+            
+            closest_a_text longtext NULL DEFAULT NULL,
+            closest_a_html longtext NULL DEFAULT NULL,
+            closest_a_width int(11) NULL DEFAULT NULL,
+            closest_a_height int(11) NULL DEFAULT NULL,
+            
+            scroll_x_delta int(11) NULL DEFAULT NULL,
+            scroll_y_delta int(11) NULL DEFAULT NULL,
+            
+            sync_ts bigint(20) unsigned NOT NULL,
+                        
+            PRIMARY KEY  (m_id),
+            UNIQUE KEY m_guid (m_guid),
+            KEY session_guid (session_guid),
+            KEY project_id (project_id),
+            KEY project_name (project_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name),
+            KEY win_guid (win_guid),
+            KEY tab_guid (tab_guid),
+            KEY m_event (m_event)
+        ) $charset_collate;";
+
+
+        $sql_create_tbl_serp = "CREATE TABLE $tbl_serp (
+            serp_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            serp_guid varchar(50) NOT NULL,
+            session_guid varchar(50) NOT NULL,
+            
+            project_id int(11) NULL DEFAULT NULL,
+            project_name varchar(50) NULL DEFAULT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
+            
+            win_id int(11) NULL DEFAULT NULL,
+            win_guid varchar(50) NULL DEFAULT NULL,
+            tab_id int(11) NULL DEFAULT NULL,
+            tab_guid varchar(50) NULL DEFAULT NULL,
+            
+            serp_ts bigint(20) unsigned NOT NULL,
+            serp_url varchar(500) NULL DEFAULT NULL,
+            search_engine varchar(50) NULL DEFAULT NULL,
+            search_query varchar(500) NULL DEFAULT NULL,
+            serp_offset int(11) NULL DEFAULT NULL,
+            
+            scraped_json_arr longtext NULL DEFAULT NULL,
+            
+            zoom float(10,4) NULL DEFAULT NULL,
+            page_w int(11) NULL DEFAULT NULL,
+            page_h int(11) NULL DEFAULT NULL,
+            viewport_w int(11) NULL DEFAULT NULL,
+            viewport_h int(11) NULL DEFAULT NULL,
+            browser_w int(11) NULL DEFAULT NULL,
+            browser_h int(11) NULL DEFAULT NULL,
+            page_scrolled_x int(11) NULL DEFAULT NULL,
+            page_scrolled_y int(11) NULL DEFAULT NULL,
+            
+            sync_ts bigint(20) unsigned NOT NULL,            
+            
+            PRIMARY KEY  (serp_id),
+            UNIQUE KEY serp_guid (serp_guid),
+            KEY session_guid (session_guid),
+            KEY project_id (project_id),
+            KEY project_name (project_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name),
+            KEY win_guid (win_guid),
+            KEY tab_guid (tab_guid)
+        ) $charset_collate;";
+
+
+        $sql_create_tbl_webnav = "CREATE TABLE $tbl_webnav (
+            webnav_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            webnav_guid varchar(50) NOT NULL,
+            session_guid varchar(50) NOT NULL,
+            
+            project_id int(11) NULL DEFAULT NULL,
+            project_name varchar(50) NULL DEFAULT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+           	user_name varchar(50) NOT NULL,
+            
+            tab_id int(11) NULL DEFAULT NULL,
+            tab_guid varchar(50) NULL DEFAULT NULL,
+            
+            webnav_ts bigint(20) unsigned NOT NULL,
+            webnav_event varchar(100) NULL DEFAULT NULL,
+            webnav_url varchar(500) NULL DEFAULT NULL,
+            webnav_transition_type varchar(50) NULL DEFAULT NULL,
+            webnav_transition_qual varchar(50) NULL DEFAULT NULL,
+            
+            sync_ts bigint(20) unsigned NOT NULL,            
+            
+            PRIMARY KEY  (webnav_id),
+            UNIQUE KEY webnav_guid (webnav_guid),
+            KEY session_guid (session_guid),
+            KEY project_id (project_id),
+            KEY project_name (project_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name),
+            KEY tab_guid (tab_guid),
+            KEY webnav_event (webnav_event),
+            KEY webnav_transition_type (webnav_transition_type)
+        ) $charset_collate;";
+
+
+        $sql_create_tbl_largestring = "CREATE TABLE $tbl_largestring (
+            string_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            string_guid varchar(50) NOT NULL,
+            src_url varchar(500) NULL DEFAULT NULL,
+            string_body longtext NULL DEFAULT NULL,
+            sync_ts bigint(20) unsigned NOT NULL,            
+            
+            PRIMARY KEY  (string_id),
+            UNIQUE KEY string_guid (string_guid)
+        ) $charset_collate;";
+
+
+
+
+
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         dbDelta( $sql_create_tbl_sessions );
         dbDelta( $sql_create_tbl_pagevisits );
+        dbDelta( $sql_create_tbl_mouse );
+        dbDelta( $sql_create_tbl_webnav );
+        dbDelta( $sql_create_tbl_serp );
+        dbDelta( $sql_create_tbl_largestring );
 
         add_option( 'yasbil_wp_db_version', $yasbil_wp_db_version );
     }

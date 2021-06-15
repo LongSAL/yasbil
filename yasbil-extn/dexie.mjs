@@ -11,12 +11,6 @@
  * Apache License Version 2.0, January 2004, http://www.apache.org/licenses/
  */
  
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(global.Dexie = factory());
-}(this, (function () { 'use strict';
-
 var __assign = function() {
     __assign = Object.assign || function __assign(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -4422,7 +4416,6 @@ initDatabaseEnumerator(Dexie.dependencies.indexedDB);
 DexiePromise.rejectionMapper = mapError;
 setDebug(debug, dexieStackFrameFilter);
 
-return Dexie;
-
-})));
-//# sourceMappingURL=dexie.js.map
+export default Dexie;
+export { Dexie };
+//# sourceMappingURL=dexie.mjs.map

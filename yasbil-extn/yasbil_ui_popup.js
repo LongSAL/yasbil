@@ -5,11 +5,12 @@
  * Time: 07:10 PM CDT
  */
 
-
 //-------------------- Establish Connection with BG Script -----------------
 // cs = content script
 // bg = background script
-let portToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+// ba = browser action
+let portPopupToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
+// console.log(portPopupToBG);
 
 $(document).ready(function()
 {
@@ -27,7 +28,7 @@ $(document).ready(function()
         {
             if(this.checked) // logging session start (not syncing)
             {
-                portToBG.postMessage({yasbil_msg: "LOG_START"});
+                portPopupToBG.postMessage({yasbil_msg: "LOG_START"});
 
                 // log btn: on
                 // log btn: show
@@ -41,7 +42,7 @@ $(document).ready(function()
             }
             else // logging session end
             {
-                portToBG.postMessage({yasbil_msg: "LOG_END"});
+                portPopupToBG.postMessage({yasbil_msg: "LOG_END"});
 
                 // log btn: off
                 // log btn: show
@@ -63,9 +64,9 @@ $(document).ready(function()
     $('button#do_sync').click(function ()
     {
         // double-checking: no active logging session
-        if(get_session_id() === "0")
+        if(get_session_guid() === "0")
         {
-            portToBG.postMessage({yasbil_msg: "DO_SYNC"});
+            portPopupToBG.postMessage({yasbil_msg: "DO_SYNC"});
             setLogOFF();
             $('div#log_controls').hide();
             $('div#sync_controls').hide();
@@ -138,8 +139,10 @@ function refreshPopupElements()
     $('#sync_data_msg').html(get_sync_data_msg());
     $('p#sync_progress_msg').html(get_sync_progress_msg());
 
-    let is_logging = (get_session_id() !== "0") ;
-    let is_syncing = (get_sync_status() === "ON");
+    const extn_state = get_extn_state();
+
+    const is_logging = extn_state.is_logging ;
+    const is_syncing = extn_state.is_syncing;
 
     // sync data: always show
 
@@ -187,37 +190,4 @@ function refreshPopupElements()
 
     // 4th situation logging and syncing NOT allowed
 }
-
-
-
-/*************
- // ---------------------- showSyncControls ----------------------
- function showSyncControls() {
-    $('div#sync_controls').show();
-    $('button#do_sync').prop('disabled', false);
-}
-
-
- // ---------------------- hideSyncControls ----------------------
- function hideSyncControls(){
-    $('div#sync_controls').hide();
-    $('button#do_sync').prop('disabled', true);
-}
-
-
- // ---------------------- setSyncON ----------------------
- function setSyncON()  {
-    $('div#log_controls').hide(); // hide log controls
-    hideSyncControls(); // hide sync controls
-    $('div#sync_progress').show(); // show sync progress
-}
-
-
- // ---------------------- setSyncOFF ----------------------
- function setSyncOFF() {
-    $('div#log_controls').show(); // show log controls
-    showSyncControls(); // show sync controls
-    $('div#sync_progress').hide(); // hide sync progress
-}
- *************/
 
