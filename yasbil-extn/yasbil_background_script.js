@@ -564,7 +564,7 @@ async function log_serp(yasbil_serp_data, tabInfo)
             search_query: yasbil_serp_data.search_query,
             serp_offset: yasbil_serp_data.serp_offset,
 
-            scraped_json_arr: yasbil_serp_data.scraped_json_arr,
+            scraped_json_arr: JSON.stringify(yasbil_serp_data.scraped_json_arr),
 
 
             zoom: yasbil_serp_data.zoom,

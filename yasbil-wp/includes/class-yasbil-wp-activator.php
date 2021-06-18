@@ -69,7 +69,7 @@ class YASBIL_WP_Activator
             session_end_ts bigint(20) unsigned NULL,
             sync_ts bigint(20) unsigned NOT NULL,
             PRIMARY KEY  (session_id),
-            UNIQUE KEY session_guid (session_guid),
+            KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
 	        KEY user_id (user_id),
@@ -110,7 +110,7 @@ class YASBIL_WP_Activator
             sync_ts bigint(20) unsigned NOT NULL,            
             
             PRIMARY KEY  (pv_id),
-            UNIQUE KEY pv_guid (pv_guid),
+            KEY pv_guid (pv_guid),
             KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
@@ -174,7 +174,7 @@ class YASBIL_WP_Activator
             sync_ts bigint(20) unsigned NOT NULL,
                         
             PRIMARY KEY  (m_id),
-            UNIQUE KEY m_guid (m_guid),
+            KEY m_guid (m_guid),
             KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
@@ -222,7 +222,7 @@ class YASBIL_WP_Activator
             sync_ts bigint(20) unsigned NOT NULL,            
             
             PRIMARY KEY  (serp_id),
-            UNIQUE KEY serp_guid (serp_guid),
+            KEY serp_guid (serp_guid),
             KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
@@ -255,7 +255,7 @@ class YASBIL_WP_Activator
             sync_ts bigint(20) unsigned NOT NULL,            
             
             PRIMARY KEY  (webnav_id),
-            UNIQUE KEY webnav_guid (webnav_guid),
+            KEY webnav_guid (webnav_guid),
             KEY session_guid (session_guid),
             KEY project_id (project_id),
             KEY project_name (project_name),
@@ -270,12 +270,22 @@ class YASBIL_WP_Activator
         $sql_create_tbl_largestring = "CREATE TABLE $tbl_largestring (
             string_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             string_guid varchar(50) NOT NULL,
+            
+            project_id int(11) NULL DEFAULT NULL,
+            project_name varchar(50) NULL DEFAULT NULL,
+            user_id bigint(20) unsigned NULL DEFAULT NULL,
+           	user_name varchar(50) NULL DEFAULT NULL,
+            
             src_url varchar(500) NULL DEFAULT NULL,
             string_body longtext NULL DEFAULT NULL,
             sync_ts bigint(20) unsigned NOT NULL,            
             
             PRIMARY KEY  (string_id),
-            UNIQUE KEY string_guid (string_guid)
+            KEY string_guid (string_guid),
+            KEY project_id (project_id),
+            KEY project_name (project_name),
+            KEY user_id (user_id),
+	        KEY user_name (user_name)
         ) $charset_collate;";
 
 

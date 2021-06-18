@@ -328,6 +328,12 @@ In addition to the properties above, all objects have contain the following comm
 | ----------- | ----------- |
 |`string_id`|server only; PK; auto-increment|
 |`string_guid`|PK in client|
+|--------------|--------------|
+|`project_id` | (numeric) server only; identifies which IIR project participant is assocated with|
+|`project_name` | (string) server only; identifies which IIR project participant is assocated with|
+|`user_id`  | server only (WordPress User ID) |
+|`user_name`  | server only; WordPress User Name; use as codename of participant |
+|--------------|--------------|
 |`src_url`|URL from where string was originally found|
 |`string_body`|body of the string|
 |--------------|--------------|

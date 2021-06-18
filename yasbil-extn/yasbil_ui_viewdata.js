@@ -461,7 +461,7 @@ $(document).ready(async function()
                     data: null, render: function (data, type, row) {
 
                         let return_data = "";
-                        const json_arr = row['scraped_json_arr'];
+                        const json_arr = JSON.parse(row['scraped_json_arr']);
 
                         let i = 0;
                         for(let arr_i of json_arr)

@@ -14,6 +14,8 @@ let portPopupToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
 
 $(document).ready(function()
 {
+    $('#yasbil_version').html(browser.runtime.getManifest().version);
+
     refreshPopupElements();
 
     const yasbil_settings = yasbil_get_settings();
