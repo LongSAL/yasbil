@@ -24,8 +24,9 @@ db.open().then(async function (db) {
     __del_synced_data(); // delete data synced over a week ago
     console.log('Database opened successfully');
 }).catch (function (err) {
-    console.log('DB Open Error occurred');
-    console.log(err);
+    console.error('DB Open Error occurred');
+    console.error(err);
+    console.trace(err)
 });
 
 // no need to export db?
@@ -34,39 +35,142 @@ db.open().then(async function (db) {
 // generic function to insert row in table
 export async function insert_row(table_name, data_row, upd_sync_msg=false)
 {
-    await db.table(table_name)
-        .add(data_row)
-        .catch(function(error) {
-            console.log(`${table_name} insert error: ${error}`);
-        });
+    try
+    {
+        await db.table(table_name)
+            .add(data_row)
+            .catch(function(error) {
+                console.log(`${table_name} insert error: ${error}`);
+            });
 
-    // update sync message to show on front end
-    if(upd_sync_msg)
-        update_sync_data_msg(); // no need to await
+        // update sync message to show on front end
+        if(upd_sync_msg)
+            update_sync_data_msg(); // no need to await
+    }
+    catch (err)
+    {
+        console.error(`------------- Error insert_row() in table ${table_name}`);
+        console.error(err);
+        console.error(err.stack);
+    }
+
 }
 
 
 
 
 // generic function to select all rows from table as array
-export async function select_all(table_name)
+export async function select_all(table_name, only_unsynced = false)
 {
-    return await db.table(table_name).toArray();
+    //mother try
+    try
+    {
+        //return await db.table(table_name).toArray();
+
+        let result_arr = [];
+
+        //inner try-catch to deal with very large tables
+        try
+        {
+            //only unsynced rows
+            if(only_unsynced)
+            {
+                result_arr = await db.table(table_name)
+                    .where('sync_ts').equals(0)
+                    .toArray();
+            }
+            else
+            {
+                // all rows
+                result_arr = await db.table(table_name)
+                    .toArray();
+            }
+
+            return result_arr;
+        }
+        catch (inner_err)
+        {
+            //deal with very large tables here
+            console.log(`[select_all]: probably very large table [${table_name}], unsynced = ${only_unsynced}`);
+            console.log(inner_err);
+
+            // first, delete already synced data for this table
+            await __del_synced_data(table_name,true);
+
+            //then, loop to see how much can be sent, and reduce
+            let n_limit = 2000, n_decrement = 500;
+            let is_error = false;
+
+            do
+            {
+                try
+                {
+                    console.log(`[select_all] ${table_name}: trying with n_limit = ${n_limit}`);
+
+                    if(only_unsynced)
+                    {
+                        result_arr = await db.table(table_name)
+                            .where('sync_ts').equals(0)
+                            .limit(n_limit)
+                            .toArray();
+                    }
+                    else
+                    {
+                        result_arr = await db.table(table_name)
+                            .limit(n_limit)
+                            .toArray();
+                    }
+
+                    is_error = false;
+                }
+                catch (inner_loop_err)
+                {
+                    console.log(`[select_all] ${table_name}: Error occurs at n_limit = ${n_limit}`);
+                    n_limit -= n_decrement;
+                    is_error = true
+                }
+            } while(is_error && n_limit >= 0);
+
+
+            console.log(`[select_all]: finally sending ${result_arr.length} rows`);
+
+            return result_arr;
+        }
+    }
+    catch (err)
+    {
+        console.error(`------------- [select_all]: Error for table ${table_name}`);
+        console.error(err);
+        console.error(err.stack);
+
+        return [];
+    }
 }
+
+
+
 
 
 //-------------------- __popl_string_dict -----------------
 // populate _DICT_ALL_STRINGS
 async function __popl_string_dict()
 {
-    const arr_all_str = await select_all('yasbil_largestring');
-
-    for(const row of arr_all_str)
+    try
     {
-        _DICT_ALL_STRINGS[row['string_guid']] = row['string_body'];
+        const arr_all_str = await select_all('yasbil_largestring');
+
+        for(const row of arr_all_str)
+        {
+            _DICT_ALL_STRINGS[row['string_guid']] = row['string_body'];
+        }
+    }
+    catch (err)
+    {
+        console.error(`------------- Error __popl_string_dict()`);
+        console.error(err);
+        console.error(err.stack);
     }
 
-    // console.log('string dict populated: ', Object.keys(_DICT_ALL_STRINGS).length);
 }
 
 
@@ -129,7 +233,9 @@ export async function string2hash(p_largestring, src_url="", is_html=false)
     }
     catch (err)
     {
+        console.error(`------------- Error string2hash()`);
         console.error(err);
+        console.error(err.stack);
         return "";
     }
 }
@@ -163,7 +269,9 @@ export function hash2string(p_hash)
     }
     catch (err)
     {
+        console.error(`------------- Error hash2string()`);
         console.error(err);
+        console.error(err.stack);
         return "";
     }
 }
@@ -177,7 +285,7 @@ export async function end_session()
         get_session_guid(), {session_end_ts: new Date().getTime()}
     ).catch(function(error)
     {
-        console.log("Session End DB Error: " + error);
+        console.error("------------- Session End DB Error: " + error);
     });
 }
 
@@ -245,6 +353,10 @@ export async function do_sync_job()
     {
         set_sync_result('ERROR');
         set_sync_progress_msg(err.toString());
+
+        console.error(`------------- Error do_sync_job()`);
+        console.error(err);
+        console.error(err.stack);
     }
     finally
     {
@@ -299,10 +411,12 @@ async function sync_table_data(table_name, pk, api_endpoint)
         // loop exits when no more sync_ts = 0?
         while(true)
         {
-            // --------- STEP 1: SELECTing table data ---------
-            let table_data = await db.table(table_name)
-                .where('sync_ts').equals(0)
-                .toArray();
+            // --------- STEP 1: SELECTing unsynced table data ---------
+            // let table_data = await db.table(table_name)
+            //     .where('sync_ts').equals(0)
+            //     .toArray();
+
+            let table_data = await select_all(table_name, true);
 
             // loop exit condition?
             if(!table_data || table_data.length === 0){
@@ -319,15 +433,6 @@ async function sync_table_data(table_name, pk, api_endpoint)
                 // if n rows create size_mb, how many rows for payload_max_size?
                 const n_rows_to_send = Math.floor(table_data.length / size_mb * PAYLOAD_MAX_SIZE_MB);
                 table_data = table_data.slice(0, n_rows_to_send);
-
-                /*if(table_data.length >= 10)
-                table_data = [
-                    table_data[0],
-                    table_data[1],
-                    table_data[2],
-                    table_data[3],
-                    table_data[4],
-                ];*/
             }
 
             const num_rows_sent = table_data.length;
@@ -400,9 +505,12 @@ async function sync_table_data(table_name, pk, api_endpoint)
     }
     catch (err)
     {
-        console.log(err);
         sync_result.ok = false;
         sync_result.msg = err.toString();
+
+        console.error(`------------- Error sync_table_data()`);
+        console.error(err);
+        console.error(err.stack);
     }
 
     return sync_result;
@@ -413,12 +521,14 @@ async function sync_table_data(table_name, pk, api_endpoint)
 //-------------------- update_sync_data_msg (no need to export) -----------------
 export async function update_sync_data_msg()
 {
-    let n_tot = 0;
-    let size_tot = 0;
-    let sync_msg = //`<i>No data available to sync.</i>` +
-        `<i> Turn on logging and browse the internet to record data.</i>`;
+    try
+    {
+        let n_tot = 0;
+        let size_tot = 0;
+        let sync_msg = //`<i>No data available to sync.</i>` +
+            `<i> Turn on logging and browse the internet to record data.</i>`;
 
-    let row_counts_html = `
+        let row_counts_html = `
         <small>
         <table class="table table-striped table-hover table-sm">
         <thead>
@@ -431,34 +541,34 @@ export async function update_sync_data_msg()
         <tbody>
         `;
 
-    for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
-    {
-        const tbl = ARR_TABLES_SYNC_INFO[i];
+        for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
+        {
+            const tbl = ARR_TABLES_SYNC_INFO[i];
 
-        const arr_tbl = await db.table(tbl.name)
-            .where('sync_ts')
-            .equals(0)
-            .toArray()
-            //.count()
-        ;
+            // const arr_tbl = await db.table(tbl.name)
+            //         .where('sync_ts').equals(0)
+            //         .toArray()
+            // ;
 
-        const row_count = arr_tbl.length;
-        const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
+            const arr_tbl = await select_all(tbl.name, true);
 
-        n_tot += row_count;
-        size_tot += tbl_size;
+            const row_count = arr_tbl.length;
+            const tbl_size = new TextEncoder().encode(JSON.stringify(arr_tbl)).length;
 
-        row_counts_html = row_counts_html +
-            `<tr>
+            n_tot += row_count;
+            size_tot += tbl_size;
+
+            row_counts_html = row_counts_html +
+                `<tr>
                 <td class="text-start">${tbl.nice_name}</td>
                 <td class="text-end">${row_count}</td>
                 <td class="text-end">${get_file_size(tbl_size)}</td>
              </tr>
             `;
-    }
+        }
 
-    row_counts_html = row_counts_html +
-        ` </tbody>
+        row_counts_html = row_counts_html +
+            ` </tbody>
            <tfoot>
                 <tr class="table-info fw-bold">
                     <td class="text-start">Total</td>
@@ -470,19 +580,26 @@ export async function update_sync_data_msg()
         </small>
         `;
 
-    set_sync_rows_tot(n_tot);
+        set_sync_rows_tot(n_tot);
 
-    if(n_tot > 0)
-    {
-        if(get_sync_status() === "OFF")
-            sync_msg = `Data Ready to Sync:<br/>${row_counts_html}`;
-        else
-            sync_msg = `Data Being Synced:<br/>${row_counts_html}`;
+        if(n_tot > 0)
+        {
+            if(get_sync_status() === "OFF")
+                sync_msg = `Data Ready to Sync:<br/>${row_counts_html}`;
+            else
+                sync_msg = `Data Being Synced:<br/>${row_counts_html}`;
+        }
+
+        // console.log(sync_msg);
+
+        set_sync_data_msg(sync_msg);
     }
-
-    // console.log(sync_msg);
-
-    set_sync_data_msg(sync_msg);
+    catch (err)
+    {
+        console.error(`------------- Error update_sync_data_msg()`);
+        console.error(err);
+        console.error(err.stack);
+    }
 }
 
 
@@ -511,30 +628,55 @@ async function __reset_sync_ts()
 
 
 // -------------------- __del_synced_data --------------------
-async function __del_synced_data()
+async function __del_synced_data(table_name = "", force_delete = false)
 {
-    const __DAY_THRESH = 1; // 7 days...
-    const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
-    const oneWeekAgo = Date.now() - DEL_THRESH;
-
-    for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
+    try
     {
-        let tbl = ARR_TABLES_SYNC_INFO[i];
+        const __DAY_THRESH = 1; // 7 days...
+        const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
+        const oneWeekAgo = Date.now() - DEL_THRESH;
 
-        //change str to int
-        // db.table(tbl.name).toCollection().modify(row => {
-        //     row.sync_ts = parseInt(row.sync_ts);
-        // });
+        for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
+        {
+            let tbl = ARR_TABLES_SYNC_INFO[i];
 
-        const n_rows = await db.table(tbl.name)
-            .where('sync_ts')
-            // synct_ts = 0 are rows that haven't been synced
-            // [100 ms from epoch] is safe choice
-            .between(100, oneWeekAgo)
-            .delete();
+            //change str to int
+            // db.table(tbl.name).toCollection().modify(row => {
+            //     row.sync_ts = parseInt(row.sync_ts);
+            // });
 
-        if(n_rows > 0)
-            console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
+            let n_rows = 0;
+
+            if(force_delete && table_name === tbl.name)
+            {
+                n_rows = await db.table(tbl.name)
+                    .where('sync_ts')
+                    // synct_ts = 0 are rows that haven't been synced
+                    // [100 ms from epoch] is safe choice
+                    .above(100)
+                    .delete();
+            }
+            else
+            {
+                n_rows = await db.table(tbl.name)
+                    .where('sync_ts')
+                    // synct_ts = 0 are rows that haven't been synced
+                    // [100 ms from epoch] is safe choice
+                    .between(100, oneWeekAgo)
+                    .delete();
+            }
+
+
+            if(n_rows > 0)
+                console.log(`Deleted rows from ${tbl.name}; #rows = ${n_rows}`);
+        }
     }
+    catch (err)
+    {
+        console.error(`------------- Error __del_synced_data()`);
+        console.error(err);
+        console.error(err.stack);
+    }
+
 }
 
