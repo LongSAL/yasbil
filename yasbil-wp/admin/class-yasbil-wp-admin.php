@@ -424,6 +424,13 @@ class YASBIL_WP_Admin {
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
 
+        <style>
+            .dataTables_length select {
+                width: 60px !important;
+                padding: 0px 5px !important;
+            }
+        </style>
+
         <div class="wrap">
             <h1>YASBIL Data Collection Summary</h1>
 
@@ -644,6 +651,9 @@ class YASBIL_WP_Admin {
 
 
 
+
+
+
     /**
      * Renders HTML to view synced data
      * Participants: can only view their own data
@@ -703,6 +713,13 @@ class YASBIL_WP_Admin {
         $user_name = $user_data->user_login;
 
 ?>
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <!-- Option 1: Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
         <!-- datatables  buttons-->
@@ -713,6 +730,41 @@ class YASBIL_WP_Admin {
         <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.html5.min.js"></script>
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.print.min.js"></script>
+
+        <style>
+            /*table caption {*/
+            /*    font-size: 18px;*/
+            /*}*/
+
+            body {
+                background: #f0f0f1 !important;
+                color: #3c434a !important;
+                font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+                font-size: 13px !important;
+                line-height: 1.4em !important;
+                min-width: 600px !important;
+            }
+
+            .dataTables_length select {
+                width: 60px !important;
+                padding: 0px 5px !important;
+            }
+
+            div.table-wrapper {
+                /*padding: 10px;*/
+                /*background: white;*/
+            }
+
+            div.nav-content-wrapper {
+                background: white;
+                padding: 10px;
+            }
+
+            div.tab-content {
+                border-top: 2px solid #ccc;
+                padding-top: 10px;
+            }
+        </style>
 
         <div class="wrap">
 
@@ -806,134 +858,189 @@ class YASBIL_WP_Admin {
                 &nbsp; &bull; &nbsp;
                 <b>Synced:</b>
                 <?=$this->yasbil_milli_to_str($row_s['sync_ts'], $tz_off, true)?>
-
-
-                <br/><br/>
-
-                Page Visits:
             </p>
 
-<?php
-            $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+            <div class="nav-content-wrapper">
 
-            $sql_select_pv = "
-                    SELECT *
-                    FROM $tbl_pagevisits pv
-                    WHERE 1=1
-                    and pv.session_guid = %s
-                    group by pv.hist_ts
-                    ORDER BY pv.pv_ts asc
-                ";
+                <!-- Nav tabs for various tables-->
+                <ul class="nav nav-pills" id="nav_tabs_<?=$row_s['session_id']?>" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active"
+                                id="pagevisits-tab" data-bs-toggle="tab" data-bs-target="#tab_pagevisits_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_pagevisits_<?=$row_s['session_id']?>" aria-selected="true"
+                        >Page Visits</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="mouse-tab" data-bs-toggle="tab" data-bs-target="#tab_mouse_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_mouse_<?=$row_s['session_id']?>" aria-selected="false"
+                        >Mouse Events</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="serps-tab" data-bs-toggle="tab" data-bs-target="#tab_serp_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_serp_<?=$row_s['session_id']?>" aria-selected="false"
+                        >SERPs</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="webnav-tab" data-bs-toggle="tab" data-bs-target="#tab_webnav_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_webnav_<?=$row_s['session_id']?>" aria-selected="false"
+                        >Web Events</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="largestring-tab" data-bs-toggle="tab" data-bs-target="#tab_largestring_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_largestring_<?=$row_s['session_id']?>" aria-selected="false"
+                        >Text Content</button>
+                    </li>
+                </ul>
 
-            $db_res_pv =  $wpdb->get_results(
-                $wpdb->prepare($sql_select_pv, $session_guid),
-                ARRAY_A
-            );
+                <!-- Tab panes -->
+                <div class="tab-content">
 
-?>
+                    <!--------------------- PageVisits ----------------------->
+                    <div id="tab_pagevisits_<?=$row_s['session_id']?>" class="tab-pane active" role="tabpanel" aria-labelledby="pagevisits-tab">
 
-            <div class="table-wrapper" 
-                 style="padding: 10px; background: white"
-            >
+                        <?php
+                        $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
 
-                <table id="table_pagevisits_<?=$row_s['session_id']?>" class="display">
-                    <thead>
-                        <tr>
-                            <!-- hidden. for export -->
-                            <th>Sync Time</th>
-                            <th>Full Title</th>
-                            <th>Full URL</th>
+                        $sql_select_pv = "
+                        SELECT *
+                        FROM $tbl_pagevisits pv
+                        WHERE 1=1
+                        and pv.session_guid = %s
+                        group by pv.hist_ts
+                        ORDER BY pv.pv_ts asc
+                    ";
 
-                            <!-- visible-->
-                            <th>Timestamp</th>
-                            <th>Window# | Tab#</th>
-                            <th>URL</th>
-                            <th>Navigation Event</th>
-                            <th>Page Title</th>
-                            <th>
-                                <a target="_blank"
-                                   href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
-                                >Transition</a>
-                            </th>
-                            <th>Search Engine, Search Query</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-<?php
-            // --------- start pagevisit loop - for rows of table -------------
+                        $db_res_pv =  $wpdb->get_results(
+                            $wpdb->prepare($sql_select_pv, $session_guid),
+                            ARRAY_A
+                        );
 
-            // for displaying window and tab numbers as 1,2...
-            $win_num = 1;
-            $tab_num = 1;
-            $arr_win = array();
-            $arr_tab = array();
+                        ?>
 
-            foreach ($db_res_pv as $row_pv)
-            {
-                if(!array_key_exists($row_pv['win_id'], $arr_win)) {
-                    $arr_win[$row_pv['win_id']] = $win_num++;
-                }
+                        <div class="table-wrapper">
+                            <!--h2 class="table-name">Page Visits</h2-->
 
-                if(!array_key_exists($row_pv['tab_id'], $arr_tab)) {
-                    $arr_tab[$row_pv['tab_id']] = $tab_num++;
-                }
+                            <table id="table_pagevisits_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Window# | Tab#</th>
+                                    <th>URL</th>
+                                    <th>Navigation Event</th>
+                                    <th>Page Title</th>
+                                    <th>
+                                        <a target="_blank"
+                                           href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
+                                        >Transition</a>
+                                    </th>
+                                    <th>Search Engine, Search Query</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php
+                                // --------- start pagevisit loop - for rows of table -------------
 
-                $time = $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off);
+                                // for displaying window and tab numbers as 1,2...
+                                $win_num = 1;
+                                $tab_num = 1;
+                                $arr_win = array();
+                                $arr_tab = array();
 
-                $window = $arr_win[$row_pv['win_id']];
-                $tab = $arr_tab[$row_pv['tab_id']];
+                                foreach ($db_res_pv as $row_pv)
+                                {
+                                    if(!array_key_exists($row_pv['win_id'], $arr_win)) {
+                                        $arr_win[$row_pv['win_id']] = $win_num++;
+                                    }
 
-                //$transition_type = $row_pv['pv_transition_type'];
+                                    if(!array_key_exists($row_pv['tab_id'], $arr_tab)) {
+                                        $arr_tab[$row_pv['tab_id']] = $tab_num++;
+                                    }
 
-                $url_host = '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
-                    . $row_pv['pv_hostname']
-                    . '</a>';
+                                    $time = $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off);
 
-?>
-                    <tr>
-                        <!-- hidden; for export-->
-                        <td><?=$this->yasbil_milli_to_str($row_pv['sync_ts'])?></td>
-                        <td><?=$row_pv['pv_title']?></td>
-                        <td><?=$row_pv['pv_url']?></td>
+                                    $window = $arr_win[$row_pv['win_id']];
+                                    $tab = $arr_tab[$row_pv['tab_id']];
 
-                        <!--visible-->
-                        <td><?=$time?></td>
-                        <td>
-                            <?=$window?> | <?=$tab?>
-                        </td>
-                        <td><?=$url_host?></td>
-                        <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
-                        <td>
-                            <?=str_replace(
-                                ['.',  '+',  '?',  '/',  '='],
-                                ['. ', '+ ', '? ', '/ ', '= '],
-                                $row_pv['pv_title']
-                            )?>
-                        </td>
-                        <td><?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?></td>
-                        <td><?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?></td>
-                    </tr>
-<?php
-            } // --------- end pagevisit loop -------------
-?>
-                    </tbody>
-                </table>
-            </div> <!-- table wrapper -->
+                                    //$transition_type = $row_pv['pv_transition_type'];
 
-            <script>
-                jQuery('#table_pagevisits_<?=$row_s['session_id']?>').DataTable({
-                    columnDefs: [{
-                        targets: [0, 1, 2],
-                        visible: false,
-                        searchable: false
-                    }],
-                    pageLength: 100,
-                    dom: 'Blfritip', //https://datatables.net/reference/option/dom
-                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                    // hide the last few columns, but include in data export
+                                    $url_host = '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
+                                        . $row_pv['pv_hostname']
+                                        . '</a>';
 
-                });
-            </script>
+                                    ?>
+                                    <tr>
+                                        <td><?=$time?></td>
+                                        <td>
+                                            <?=$window?> | <?=$tab?>
+                                        </td>
+                                        <td><?=$url_host?></td>
+                                        <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
+                                        <td>
+                                            <?=str_replace(
+                                                ['.',  '+',  '?',  '/',  '='],
+                                                ['. ', '+ ', '? ', '/ ', '= '],
+                                                $row_pv['pv_title']
+                                            )?>
+                                        </td>
+                                        <td>
+                                            <?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?>
+                                        </td>
+                                        <td>
+                                            <?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                } // --------- end pagevisit loop -------------
+                                ?>
+                                </tbody>
+                            </table>
+                        </div> <!-- table wrapper -->
+
+                        <script>
+                            jQuery('#table_pagevisits_<?=$row_s['session_id']?>').DataTable(
+                                {
+                                    pageLength: 10,
+                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
+                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                });
+                        </script>
+
+
+                    </div> <!-------- end: PageVisits ------->
+
+
+                    <!--------------------- Mouse ----------------------->
+                    <div id="tab_mouse_<?=$row_s['session_id']?>"  class="tab-pane"  role="tabpanel" aria-labelledby="mouse-tab">
+                        content 2
+                    </div> <!-------- end: Mouse ------->
+
+
+                    <!--------------------- SERP ----------------------->
+                    <div id="tab_serp_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="serps-tab">
+                        content 3
+                    </div> <!-------- end: SERP ------->
+
+
+                    <!--------------------- WebNav ----------------------->
+                    <div id="tab_webnav_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="webnav-tab">
+                        content 4
+                    </div>  <!-------- end: WebNav ------->
+
+
+                    <!--------------------- Largestring ----------------------->
+                    <div id="tab_largestring_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="largestring-tab">
+                        content 5
+                    </div>  <!-------- end: LargeString ------->
+
+                </div> <!-- end: tab-content -->
+
+            </div> <!-- end: nav-content-wrapper -->
+
+
 <?php
 
         } // --------- end session loop -------------

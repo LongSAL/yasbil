@@ -3,6 +3,7 @@
 
 ### 2.0.3
 - fix: SERP scrape JSON array needed to be stringified to sync
+- WP: 
 
 ### 2.0.2
 - fix: select_all for very large tables: try limit 2000 rows and go down
