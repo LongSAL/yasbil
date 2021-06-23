@@ -62,18 +62,26 @@ class YASBIL_WP_Admin {
      */
     public function yasbil_register_api_endpoints()
     {
-        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/sync_table
 
+        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/check_connection
         register_rest_route('yasbil/v2_0_0', 'check_connection', [
             'methods'             => WP_REST_Server::READABLE, //GET
             'callback'            => array($this, 'yasbil_sync_check_connection'),
             'permission_callback' => array($this, 'yasbil_sync_check_permission'),
         ]);
 
+        //POST:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/sync_table
         register_rest_route('yasbil/v2_0_0', 'sync_table', [
             'methods'             => WP_REST_Server::CREATABLE, //POST
             'callback'            => array($this, 'yasbil_sync_table'),
             'permission_callback' => array($this, 'yasbil_sync_check_permission'),
+        ]);
+
+        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/admin/hash2string?p_hash=xxx
+        register_rest_route('yasbil/admin', 'hash2string', [
+            'methods'             => WP_REST_Server::READABLE, //GET
+            'callback'            => array($this, 'yasbil_rest_util_hash2string'),
+            'permission_callback' => array($this, 'yasbil_rest_util_check_permission'),
         ]);
 
         /*register_rest_route('yasbil/v1', 'sync_sessions', [
@@ -910,7 +918,7 @@ class YASBIL_WP_Admin {
                         FROM $tbl_pagevisits pv
                         WHERE 1=1
                         and pv.session_guid = %s
-                        group by pv.hist_ts
+                        -- group by pv.hist_ts
                         ORDER BY pv.pv_ts asc
                     ";
 
@@ -932,6 +940,8 @@ class YASBIL_WP_Admin {
                                     <th>URL</th>
                                     <th>Navigation Event</th>
                                     <th>Page Title</th>
+                                    <th>Text Size</th>
+                                    <th>HTML Size</th>
                                     <th>
                                         <a target="_blank"
                                            href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
@@ -979,6 +989,7 @@ class YASBIL_WP_Admin {
                                         </td>
                                         <td><?=$url_host?></td>
                                         <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
+
                                         <td>
                                             <?=str_replace(
                                                 ['.',  '+',  '?',  '/',  '='],
@@ -986,6 +997,10 @@ class YASBIL_WP_Admin {
                                                 $row_pv['pv_title']
                                             )?>
                                         </td>
+
+                                        <td>Text Size</td>
+                                        <td>HTML Size</td>
+
                                         <td>
                                             <?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?>
                                         </td>
@@ -1292,19 +1307,52 @@ class YASBIL_WP_Admin {
 
 
 
+//-------------------------- END: Data Sync Functions --------------------------------
+
+
+    function yasbil_rest_util_check_permission( $request )
+    {
+        // https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#permissions-callback
+
+        // Restrict YASBIL util endpoints to only users who have admin capability (for now).
+        if ( ! current_user_can( 'administrator' ) ) {
+            return new WP_Error(
+                    'rest_forbidden',
+                    esc_html__( 'OMG you can not view private data.'),
+                    array( 'status' => 401 )
+            );
+        }
+
+        // This is a black-listing approach. You could alternatively do this via white-listing, by returning false here and changing the permissions check.
+        return true;
+    }
+
+
+    //  need cookie authentication to use endpoint
+    // https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/
+    function yasbil_rest_util_hash2string( $request )
+    {
+        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/admin/hash2string?p_hash=xxx
+        if ( isset( $request['p_hash'] ) )
+        {
+            $p_hash = $request['p_hash'];
+            $large_str = $this->yasbil_hash2string($p_hash);
+
+            return rest_ensure_response( $large_str );
+
+        }
+        return rest_ensure_response( $request['p_hash'] );
+
+    }
+
+
+
+//-------------------------- START: Utility REST API Functions --------------------------------
 
 
 
 
-
-
-
-
-
-
-
-
-
+//-------------------------- END: Utility REST API Functions --------------------------------
 
 
 
@@ -1412,8 +1460,6 @@ class YASBIL_WP_Admin {
 
 
 
-
-
     //Takes a variable and returns sanitized output / default value
     public function yasbil_nvl($test_val, $default_val)
     {
@@ -1422,9 +1468,6 @@ class YASBIL_WP_Admin {
 
         return sanitize_text_field( $test_val );
     }
-
-
-
 
 
 
@@ -1461,8 +1504,38 @@ class YASBIL_WP_Admin {
     }
 
 
+    // gets the largestring stored in database
+    function yasbil_hash2string($p_hash)
+    {
+        $split_arr = explode("|", $p_hash);
 
+        //string locator does not have 3 pipe-delimited parts
+        // so must be original string
+        if(count($split_arr) !== 3)
+            return $p_hash;
 
+        // these are strings, but MySQL will parse them to int
+        $string_guid = $split_arr[0];
+        $start_idx = $split_arr[1];
+        $end_idx = $split_arr[2];
+
+        global $wpdb;
+
+        $tbl_largestring = $wpdb->prefix . "yasbil_largestring";
+
+        $db_res_string = $wpdb->get_var($wpdb->prepare("
+            select substring(a.string_body, %s, %s-%s) string_body
+            from $tbl_largestring a
+            where a.string_guid = %s
+            limit 1
+            ",
+            $start_idx,
+            $end_idx, $start_idx,
+            $string_guid
+        ));
+
+        return $db_res_string ? $db_res_string : $p_hash;
+    }
 
 
 
