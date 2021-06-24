@@ -81,7 +81,7 @@ class YASBIL_WP_Admin {
         register_rest_route('yasbil/admin', 'hash2string', [
             'methods'             => WP_REST_Server::READABLE, //GET
             'callback'            => array($this, 'yasbil_rest_util_hash2string'),
-            'permission_callback' => array($this, 'yasbil_rest_util_check_permission'),
+            //'permission_callback' => array($this, 'yasbil_rest_util_check_permission'),
         ]);
 
         /*register_rest_route('yasbil/v1', 'sync_sessions', [
@@ -753,6 +753,8 @@ class YASBIL_WP_Admin {
                 min-width: 600px !important;
             }
 
+            hr{opacity: 1!important;}
+
             .dataTables_length select {
                 width: 60px !important;
                 padding: 0px 5px !important;
@@ -769,7 +771,7 @@ class YASBIL_WP_Admin {
             }
 
             div.tab-content {
-                border-top: 2px solid #ccc;
+                border-top: 2px dashed #ddd;
                 padding-top: 10px;
             }
         </style>
@@ -838,7 +840,7 @@ class YASBIL_WP_Admin {
             $session_guid = $row_s['session_guid'];
             $tz_off = $row_s['session_tz_offset'];
 ?>
-            <hr style="border: 1px solid #aaa; margin: 20px 0px 10px;">
+            <hr style="border: 1px solid #777; margin: 20px 0px 10px;">
 
             <h1>
                 Session ID:
@@ -910,24 +912,24 @@ class YASBIL_WP_Admin {
                     <!--------------------- PageVisits ----------------------->
                     <div id="tab_pagevisits_<?=$row_s['session_id']?>" class="tab-pane active" role="tabpanel" aria-labelledby="pagevisits-tab">
 
-                        <?php
+<?php
                         $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
 
                         $sql_select_pv = "
-                        SELECT *
-                        FROM $tbl_pagevisits pv
-                        WHERE 1=1
-                        and pv.session_guid = %s
-                        -- group by pv.hist_ts
-                        ORDER BY pv.pv_ts asc
-                    ";
+                            SELECT *
+                            FROM $tbl_pagevisits pv
+                            WHERE 1=1
+                            and pv.session_guid = %s
+                            -- group by pv.hist_ts
+                            ORDER BY pv.pv_ts asc
+                        ";
 
                         $db_res_pv =  $wpdb->get_results(
                             $wpdb->prepare($sql_select_pv, $session_guid),
                             ARRAY_A
                         );
 
-                        ?>
+?>
 
                         <div class="table-wrapper">
                             <!--h2 class="table-name">Page Visits</h2-->
@@ -951,7 +953,7 @@ class YASBIL_WP_Admin {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                <?php
+<?php
                                 // --------- start pagevisit loop - for rows of table -------------
 
                                 // for displaying window and tab numbers as 1,2...
@@ -981,10 +983,18 @@ class YASBIL_WP_Admin {
                                         . $row_pv['pv_hostname']
                                         . '</a>';
 
-                                    ?>
+                                    $text_size = $this->yasbil_strsize(
+                                            $this->yasbil_hash2string($row_pv['pv_page_text'])
+                                    );
+
+                                    $html_size = $this->yasbil_strsize(
+                                        $this->yasbil_hash2string($row_pv['pv_page_html'])
+                                    );
+
+?>
                                     <tr>
                                         <td><?=$time?></td>
-                                        <td>
+                                        <td class="text-center">
                                             <?=$window?> | <?=$tab?>
                                         </td>
                                         <td><?=$url_host?></td>
@@ -998,19 +1008,19 @@ class YASBIL_WP_Admin {
                                             )?>
                                         </td>
 
-                                        <td>Text Size</td>
-                                        <td>HTML Size</td>
+                                        <td class="text-end"><?=$text_size?> k</td>
+                                        <td class="text-end"><?=$html_size?> k</td>
 
-                                        <td>
-                                            <?=str_ireplace('YASBIL_TAB_SWITCH', 'TAB_SWITCH', $row_pv['pv_transition_type'])?>
+                                        <td class="text-center">
+                                            <?=str_ireplace('YASBIL_', '', $row_pv['pv_transition_type'])?>
                                         </td>
                                         <td>
                                             <?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?>
                                         </td>
                                     </tr>
-                                    <?php
+<?php
                                 } // --------- end pagevisit loop -------------
-                                ?>
+?>
                                 </tbody>
                             </table>
                         </div> <!-- table wrapper -->
@@ -1030,13 +1040,276 @@ class YASBIL_WP_Admin {
 
                     <!--------------------- Mouse ----------------------->
                     <div id="tab_mouse_<?=$row_s['session_id']?>"  class="tab-pane"  role="tabpanel" aria-labelledby="mouse-tab">
-                        content 2
+
+<?php
+                        $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
+
+                        $sql_select_mouse = "
+                            SELECT *
+                            FROM $tbl_mouse m
+                            WHERE 1=1
+                            and m.session_guid = %s
+                            ORDER BY m.m_ts asc
+                        ";
+
+                        $db_res_mouse =  $wpdb->get_results(
+                            $wpdb->prepare($sql_select_mouse, $session_guid),
+                            ARRAY_A
+                        );
+
+?>
+
+                        <div class="table-wrapper">
+
+                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>URL</th>
+                                    <th>Event</th>
+                                    <th>Dur</th>
+                                    <th>Dimensions (w x h)</th>
+                                    <th>Locations (x, y)</th>
+                                    <th>Target</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+<?php
+                                // --------- start mouse loop - for rows of table -------------
+
+                                foreach ($db_res_mouse as $row_m)
+                                {
+
+                                    $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
+
+                                    $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
+                                        . parse_url($row_m['m_url'], PHP_URL_HOST)
+                                        . '</a>';
+
+
+
+                                    $target_text = $this->yasbil_hash2string($row_m['target_text']);
+
+                                    $text_size = $this->yasbil_strsize($target_text);
+                                    $html_size = $this->yasbil_strsize(
+                                        $this->yasbil_hash2string($row_m['target_html'])
+                                    );
+
+?>
+                                    <tr>
+                                        <!-- ts -->
+                                        <td><?=$time?></td>
+
+                                        <!-- url -->
+                                        <td class="text-center"><?=$url_host?></td>
+
+                                        <!-- event -->
+                                        <td>
+                                            <?=str_ireplace('MOUSE_', '', $row_m['m_event'])?>
+                                        </td>
+
+
+                                        <!-- duration -->
+                                        <td class="text-end">
+                                            <?=round($row_m['hover_dur']/1000, 1)?> s
+                                        </td>
+
+                                        <!-- dimensions -->
+                                        <td>
+                                            <small>
+                                                Page: <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
+                                                <br/>
+                                                Browser: <?=$row_m['browser_w']?> x <?=$row_m['browser_h']?>
+                                                <br/>
+                                                Viewport: <?=$row_m['viewport_w']?> x <?=$row_m['viewport_h']?>
+                                            </small>
+                                        </td>
+
+                                        <!-- locations -->
+                                        <td>
+                                            <small>
+                                                Mouse:
+                                                <?=$row_m['mouse_x']?>
+                                                (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%),
+                                                <?=$row_m['mouse_y']?>
+                                                (<?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
+                                                <br/>
+                                                Viewport:
+                                                <?=$row_m['page_scrolled_y']?>
+                                                (<?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>%)
+                                                to
+                                                <?=($row_m['page_scrolled_y'] + $row_m['viewport_h'])?>
+                                                (<?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>%)
+                                            </small>
+                                        </td>
+
+                                        <!-- event tagret -->
+                                        <td>
+                                            <small>
+                                                <?=substr($target_text, 0, 50)?>
+                                                <br/>
+                                                Text: <?=$text_size?>k
+                                                |
+                                                HTML: <?=$html_size?>k
+                                            </small>
+                                        </td>
+
+
+                                    </tr>
+<?php
+                                } // --------- end pagevisit loop -------------
+?>
+                                </tbody>
+                            </table>
+                        </div> <!-- table wrapper -->
+
+                        <script>
+                            jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
+                                {
+                                    pageLength: 10,
+                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
+                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                });
+                        </script>
+
+
                     </div> <!-------- end: Mouse ------->
 
 
                     <!--------------------- SERP ----------------------->
                     <div id="tab_serp_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="serps-tab">
-                        content 3
+
+                        <?php
+                        $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
+
+                        $sql_select_serp = "
+                            SELECT *
+                            FROM $tbl_serp serp
+                            WHERE 1=1
+                            and serp.session_guid = %s
+                            ORDER BY serp.serp_ts asc
+                        ";
+
+                        $db_res_serp =  $wpdb->get_results(
+                            $wpdb->prepare($sql_select_serp, $session_guid),
+                            ARRAY_A
+                        );
+
+                        ?>
+
+                        <div class="table-wrapper">
+
+                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>URL</th>
+                                    <th>Search Engine</th>
+                                    <th>Search Query</th>
+                                    <th>Data Length</th>
+                                    <th>Data (Top 3)</th>
+                                    <th>Full Data (length)</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+<?php
+                                // --------- start serp loop - for rows of table -------------
+
+                                foreach ($db_res_serp as $row_serp)
+                                {
+
+                                    $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
+
+                                    $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
+                                        . parse_url($row_m['m_url'], PHP_URL_HOST)
+                                        . '</a>';
+
+
+
+                                    $target_text = $this->yasbil_hash2string($row_m['target_text']);
+
+                                    $text_size = $this->yasbil_strsize($target_text);
+                                    $html_size = $this->yasbil_strsize(
+                                        $this->yasbil_hash2string($row_m['target_html'])
+                                    );
+
+?>
+                                    <tr>
+                                        <!-- ts -->
+                                        <td><?=$time?></td>
+
+                                        <!-- url -->
+                                        <td class="text-center"><?=$url_host?></td>
+
+                                        <!-- event -->
+                                        <td>
+                                            <?=str_ireplace('MOUSE_', '', $row_m['m_event'])?>
+                                        </td>
+
+
+                                        <!-- duration -->
+                                        <td class="text-end">
+                                            <?=round($row_m['hover_dur']/1000, 1)?> s
+                                        </td>
+
+                                        <!-- dimensions -->
+                                        <td>
+                                            <small>
+                                                Page: <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
+                                                <br/>
+                                                Browser: <?=$row_m['browser_w']?> x <?=$row_m['browser_h']?>
+                                                <br/>
+                                                Viewport: <?=$row_m['viewport_w']?> x <?=$row_m['viewport_h']?>
+                                            </small>
+                                        </td>
+
+                                        <!-- locations -->
+                                        <td>
+                                            <small>
+                                                Mouse:
+                                                <?=$row_m['mouse_x']?>
+                                                (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%),
+                                                <?=$row_m['mouse_y']?>
+                                                (<?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
+                                                <br/>
+                                                Viewport:
+                                                <?=$row_m['page_scrolled_y']?>
+                                                (<?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>%)
+                                                to
+                                                <?=($row_m['page_scrolled_y'] + $row_m['viewport_h'])?>
+                                                (<?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>%)
+                                            </small>
+                                        </td>
+
+                                        <!-- event tagret -->
+                                        <td>
+                                            <small>
+                                                <?=substr($target_text, 0, 50)?>
+                                                <br/>
+                                                Text: <?=$text_size?>k
+                                                |
+                                                HTML: <?=$html_size?>k
+                                            </small>
+                                        </td>
+
+
+                                    </tr>
+<?php
+                                } // --------- end serp loop -------------
+?>
+                                </tbody>
+                            </table>
+                        </div> <!-- table wrapper -->
+
+                        <script>
+                            jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
+                                {
+                                    pageLength: 10,
+                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
+                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                });
+                        </script>
+
                     </div> <!-------- end: SERP ------->
 
 
@@ -1523,8 +1796,9 @@ class YASBIL_WP_Admin {
 
         $tbl_largestring = $wpdb->prefix . "yasbil_largestring";
 
+        //mysql substring index starts from 1
         $db_res_string = $wpdb->get_var($wpdb->prepare("
-            select substring(a.string_body, %s, %s-%s) string_body
+            select substring(a.string_body, %s+1, %s-%s+1) string_body
             from $tbl_largestring a
             where a.string_guid = %s
             limit 1
@@ -1537,6 +1811,28 @@ class YASBIL_WP_Admin {
         return $db_res_string ? $db_res_string : $p_hash;
     }
 
+
+    // returns in K
+    function yasbil_strsize($p_str)
+    {
+        $num_chars = strlen($p_str);
+
+        return round($num_chars/1000, 1);
+
+//        $_KB = 1024;
+//        $_MB = _KB * 1024;
+//        $_GB = _MB * 1024;
+//
+//        $res = num_chars;
+//
+//        if(num_chars >= _GB)
+//            res = (num_chars / _GB).toFixed(1) + 'GB';
+//        else if(num_chars >= _MB)
+//            res = (num_chars / _MB).toFixed(1) + 'MB';
+//        else
+//            res = (num_chars / _KB).toFixed(1) + 'KB'
+
+    }
 
 
 
