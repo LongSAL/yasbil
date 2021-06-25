@@ -981,7 +981,6 @@ class YASBIL_WP_Admin {
                             $arr_tab[$row_pv['tab_id']] = $tab_num++;
                         }
 
-
                         // add data to display array
                         $arr_datatable[] = [
                             //time
@@ -991,9 +990,11 @@ class YASBIL_WP_Admin {
                             //tab
                             $arr_tab[$row_pv['tab_id']],
                             //url
-                            '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
-                                . $row_pv['pv_hostname']
-                            . '</a>',
+                            sprintf(
+                                "<a href='%s' target='_blank'>%s</a>",
+                                esc_url($row_pv['pv_url']),
+                                $row_pv['pv_hostname']
+                            ),
                             // nav event
                             str_replace('.', ' ', $row_pv['pv_event']),
                             // page title
@@ -1013,6 +1014,17 @@ class YASBIL_WP_Admin {
                         ];
 
                     } // --------- end pagevisit loop -------------
+
+                    $js_data = json_encode($arr_datatable);
+
+                    if (!$js_data)
+                    {
+                        echo "<div class='alert alert-danger'>"
+                            . json_last_error_msg()
+                            ."</div>";
+
+                        $js_data = "[]";
+                    }
 
 ?>
                         <div class="table-wrapper">
@@ -1039,26 +1051,22 @@ class YASBIL_WP_Admin {
                         </div> <!-- table wrapper -->
 
                         <script>
-                            const data_pv_<?=$row_s['session_id']?> = <?php echo json_encode($arr_datatable); ?>;
+                            const data_pv_<?=$row_s['session_id']?> = <?=$js_data?>;
 
                             jQuery('#table_pv_<?=$row_s['session_id']?>').DataTable({
                                 data: data_pv_<?=$row_s['session_id']?>,
                                 pageLength: 10, searchBuilder: true,
                                 searchPanes: {cascadePanes: true, viewTotal: true},
                                 language: {searchPanes: {countFiltered: '{shown} / {total}'}},
-                                columnDefs: [{targets: [8], searchPanes: {header: 'Transition'},}],
                                 dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                columnDefs: [{targets: [8], searchPanes: {header: 'Transition'},}],
                             });
                         </script>
-
-
                     </div> <!-------- end: PageVisits ------->
 
 
                     <!--------------------- Mouse ----------------------->
                     <div id="tab_mouse_<?=$row_s['session_id']?>"  class="tab-pane"  role="tabpanel" aria-labelledby="mouse-tab">
-
-
 <?php
                     $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
 
@@ -1076,19 +1084,10 @@ class YASBIL_WP_Admin {
                     );
 
                     // --------- start mouse loop - for rows of table -------------
-                    $arr_datatable = array();
+                    $arr_datatable = [];
                     foreach ($db_res_mouse as $row_m)
                     {
-                        $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
-
-                        $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
-                            . parse_url($row_m['m_url'], PHP_URL_HOST)
-                            . '</a>';
-
-                        $target_text = $this->yasbil_hash2string($row_m['target_text']);
-                        $closest_a = $this->yasbil_hash2string($row_m['closest_a_text']);
-
-                        // ------ run-length-encoding (RLE) for dom-path --------
+                        // ------ start: run-length-encoding (RLE) for dom-path --------
                         // https://www.geeksforgeeks.org/run-length-encoding/
                         $dom_path_str = $this->yasbil_hash2string($row_m['dom_path']);
                         $dom_path_arr = explode('|', $dom_path_str);
@@ -1120,78 +1119,68 @@ class YASBIL_WP_Admin {
 
                         // add data to display array
                         $arr_datatable[] = [
-                            $time,
-                            $window,
-                            $tab,
-                            $url_host,
-                            str_replace('.', ' ', $row_pv['pv_event']),
-                            str_replace(
-                                ['.',  '+',  '?',  '/',  '='],
-                                ['. ', '+ ', '? ', '/ ', '= '],
-                                $row_pv['pv_title']
+                            //time
+                            $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off),
+                            //url
+                            sprintf(
+                                "<a href='%s' target='_blank'>%s</a>",
+                                esc_url($row_m['m_url']),
+                                parse_url($row_m['m_url'], PHP_URL_HOST)
                             ),
-                            $text_size,
-                            $html_size,
-                            str_ireplace('YASBIL_', '', $row_pv['pv_transition_type']),
-                            "{$row_pv['pv_search_engine']} {$row_pv['pv_search_query']}"
+                            // event
+                            sprintf(
+                                "%s %s",
+                                str_ireplace('MOUSE_', '', $row_m['m_event']),
+                                $row_m['m_event'] == "MOUSE_HOVER" ? round($row_m['hover_dur']/1000, 1)."s" : ""
+                            ),
+                            // Page Dim
+                            sprintf(
+                                "%s x %s",
+                                $row_m['page_w'], $row_m['page_h']
+                            ),
+                            // Mouse Loc x, y (%, %)
+                            sprintf(
+                              "%s, %s (%s, %s)",
+                                $row_m['mouse_x'], $row_m['mouse_y'],
+                                round($row_m['mouse_x']/$row_m['page_w']*100, 0),
+                                round($row_m['mouse_y']/$row_m['page_h']*100, 0)
+                            ),
+                            // Viewport as Page Height %
+                            sprintf(
+                                "%s &dash; %s",
+                                round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0),
+                                round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)
+                            ),
+                            // Target
+                            substr(
+                                'test',
+                                //mb_convert_encoding(
+                                //    $this->yasbil_hash2string($row_m['target_text']), 'UTF-8', 'UTF-8'
+                                //),
+                                0, 50
+                            ),
+                            // Closest Anchor Tag
+                            'test', //$this->yasbil_hash2string($row_m['closest_a_text']),
+                            // DOM Path
+                            $dom_path_rle,
                         ];
 
                     } // --------- end mouse loop -------------
-?>
-                                    <tr>
-                                        <!-- ts -->
-                                        <td><?=$time?></td>
 
-                                        <!-- url -->
-                                        <td class="text-center"><?=$url_host?></td>
+                    $js_data = json_encode($arr_datatable);
 
-                                        <!-- event -->
-                                        <td>
-                                            <?=str_ireplace('MOUSE_', '', $row_m['m_event'])?>
-                                            <?=$row_m['m_event'] == "MOUSE_HOVER" ? round($row_m['hover_dur']/1000, 1)."s" : ""?>
-                                        </td>
+                    if (!$js_data)
+                    {
+                        echo "<div class='alert alert-danger'>"
+                        . json_last_error_msg()
+                        ."</div>";
 
-
-                                        <!-- page dimensions -->
-                                        <td>
-                                            <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
-                                        </td>
-
-                                        <!-- mouse location -->
-                                        <td>
-                                            <?=$row_m['mouse_x']?>,
-                                            <?=$row_m['mouse_y']?>
-
-                                            (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%,
-                                            <?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
-                                        </td>
-
-                                        <!-- viewport vertical percent -->
-                                        <td>
-                                            <?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>
-                                            &dash;
-                                            <?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>
-                                        </td>
-
-                                        <!-- target -->
-                                        <td>
-                                            <?=substr($target_text, 0, 50)?>
-                                        </td>
-
-                                        <!-- closest a -->
-                                        <td><?=$closest_a?></td>
-
-                                        <!-- dom path -->
-                                        <td>
-                                            <?=$dom_path_rle?>
-                                        </td>
-
-                                    </tr>
-<?php
+                        $js_data = "[]";
+                    }
 
 ?>
                         <div class="table-wrapper">
-                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
+                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display" style="width: 100%">
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
@@ -1208,14 +1197,21 @@ class YASBIL_WP_Admin {
                         </div> <!-- table wrapper -->
 
                         <script>
+                            const data_mouse_<?=$row_s['session_id']?> = <?=$js_data?>;
+
                             jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable({
+                                data: data_mouse_<?=$row_s['session_id']?>,
                                 pageLength: 10, searchBuilder: true,
-                                dom: 'QlfritBip', //https://datatables.net/reference/option/dom
-                                buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                //searchPanes: {cascadePanes: true, viewTotal: true},
+                                //language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                dom: 'QlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                /*columnDefs: [
+                                    {targets: [3], searchPanes: {header: 'Page Dim'},},
+                                    {targets: [4], searchPanes: {header: 'Mouse Loc'},},
+                                    {targets: [5], searchPanes: {header: 'Viewport'},},
+                                ],*/
                             });
                         </script>
-
-
                     </div> <!-------- end: Mouse ------->
 
 
