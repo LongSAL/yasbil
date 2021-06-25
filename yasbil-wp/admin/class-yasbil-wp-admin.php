@@ -727,10 +727,14 @@ class YASBIL_WP_Admin {
         <!-- Option 1: Bootstrap Bundle with Popper -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 
-
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/searchbuilder/1.1.0/css/searchBuilder.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/datetime/1.1.0/css/dataTables.dateTime.min.css">
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
-        <!-- datatables  buttons-->
+        <!-- datatables searchbuilder-->
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/searchbuilder/1.1.0/js/dataTables.searchBuilder.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/datetime/1.1.0/js/dataTables.dateTime.min.js"></script>
+        <!-- datatables buttons-->
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
         <!-- export -->
         <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
@@ -760,6 +764,11 @@ class YASBIL_WP_Admin {
                 padding: 0px 5px !important;
             }
 
+            div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria select.dtsb-dropDown,
+            div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria input.dtsb-input {
+                min-width: 200px;
+            }
+
             div.table-wrapper {
                 /*padding: 10px;*/
                 /*background: white;*/
@@ -774,6 +783,8 @@ class YASBIL_WP_Admin {
                 border-top: 2px dashed #ddd;
                 padding-top: 10px;
             }
+
+
         </style>
 
         <div class="wrap">
@@ -912,24 +923,6 @@ class YASBIL_WP_Admin {
                     <!--------------------- PageVisits ----------------------->
                     <div id="tab_pagevisits_<?=$row_s['session_id']?>" class="tab-pane active" role="tabpanel" aria-labelledby="pagevisits-tab">
 
-<?php
-                        $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
-
-                        $sql_select_pv = "
-                            SELECT *
-                            FROM $tbl_pagevisits pv
-                            WHERE 1=1
-                            and pv.session_guid = %s
-                            -- group by pv.hist_ts
-                            ORDER BY pv.pv_ts asc
-                        ";
-
-                        $db_res_pv =  $wpdb->get_results(
-                            $wpdb->prepare($sql_select_pv, $session_guid),
-                            ARRAY_A
-                        );
-
-?>
 
                         <div class="table-wrapper">
                             <!--h2 class="table-name">Page Visits</h2-->
@@ -938,7 +931,8 @@ class YASBIL_WP_Admin {
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
-                                    <th>Window# | Tab#</th>
+                                    <th>Window</th>
+                                    <th>Tab</th>
                                     <th>URL</th>
                                     <th>Navigation Event</th>
                                     <th>Page Title</th>
@@ -954,8 +948,23 @@ class YASBIL_WP_Admin {
                                 </thead>
                                 <tbody>
 <?php
-                                // --------- start pagevisit loop - for rows of table -------------
+                                $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
 
+                                $sql_select_pv = "
+                                    SELECT *
+                                    FROM $tbl_pagevisits pv
+                                    WHERE 1=1
+                                    and pv.session_guid = %s
+                                    -- group by pv.hist_ts
+                                    ORDER BY pv.pv_ts asc
+                                ";
+
+                                $db_res_pv =  $wpdb->get_results(
+                                    $wpdb->prepare($sql_select_pv, $session_guid),
+                                    ARRAY_A
+                                );
+
+                                // --------- start pagevisit loop - for rows of table -------------
                                 // for displaying window and tab numbers as 1,2...
                                 $win_num = 1;
                                 $tab_num = 1;
@@ -994,9 +1003,8 @@ class YASBIL_WP_Admin {
 ?>
                                     <tr>
                                         <td><?=$time?></td>
-                                        <td class="text-center">
-                                            <?=$window?> | <?=$tab?>
-                                        </td>
+                                        <td><?=$window?></td>
+                                        <td><?=$tab?></td>
                                         <td><?=$url_host?></td>
                                         <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
 
@@ -1026,12 +1034,18 @@ class YASBIL_WP_Admin {
                         </div> <!-- table wrapper -->
 
                         <script>
-                            jQuery('#table_pagevisits_<?=$row_s['session_id']?>').DataTable(
+                            const t_pagevisits_<?=$row_s['session_id']?> =
+                                jQuery('#table_pagevisits_<?=$row_s['session_id']?>').DataTable(
                                 {
                                     pageLength: 10,
                                     dom: 'lfritBip', //https://datatables.net/reference/option/dom
                                     buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                    searchBuilder: true,
                                 });
+
+                            t_pagevisits_<?=$row_s['session_id']?>.searchBuilder.container().prependTo(
+                                t_pagevisits_<?=$row_s['session_id']?>.table().container()
+                            );
                         </script>
 
 
@@ -1041,24 +1055,6 @@ class YASBIL_WP_Admin {
                     <!--------------------- Mouse ----------------------->
                     <div id="tab_mouse_<?=$row_s['session_id']?>"  class="tab-pane"  role="tabpanel" aria-labelledby="mouse-tab">
 
-<?php
-                        $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
-
-                        $sql_select_mouse = "
-                            SELECT *
-                            FROM $tbl_mouse m
-                            WHERE 1=1
-                            and m.session_guid = %s
-                            ORDER BY m.m_ts asc
-                        ";
-
-                        $db_res_mouse =  $wpdb->get_results(
-                            $wpdb->prepare($sql_select_mouse, $session_guid),
-                            ARRAY_A
-                        );
-
-?>
-
                         <div class="table-wrapper">
 
                             <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
@@ -1067,16 +1063,32 @@ class YASBIL_WP_Admin {
                                     <th>Timestamp</th>
                                     <th>URL</th>
                                     <th>Event</th>
-                                    <th>Dur</th>
-                                    <th>Dimensions (w x h)</th>
-                                    <th>Locations (x, y)</th>
+                                    <th>Page Dim<br/>w x h</th>
+                                    <th>Mouse Loc<br/>x, y (%, %)</th>
+                                    <th>Viewport as Page Height %</th>
                                     <th>Target</th>
+                                    <th>Closest Anchor Tag</th>
+                                    <th>DOM Path</th>
                                 </tr>
                                 </thead>
                                 <tbody>
 <?php
-                                // --------- start mouse loop - for rows of table -------------
+                                $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
 
+                                $sql_select_mouse = "
+                                    SELECT *
+                                    FROM $tbl_mouse m
+                                    WHERE 1=1
+                                    and m.session_guid = %s
+                                    ORDER BY m.m_ts asc
+                                ";
+
+                                $db_res_mouse =  $wpdb->get_results(
+                                    $wpdb->prepare($sql_select_mouse, $session_guid),
+                                    ARRAY_A
+                                );
+
+                                // --------- start mouse loop - for rows of table -------------
                                 foreach ($db_res_mouse as $row_m)
                                 {
 
@@ -1086,14 +1098,38 @@ class YASBIL_WP_Admin {
                                         . parse_url($row_m['m_url'], PHP_URL_HOST)
                                         . '</a>';
 
-
-
                                     $target_text = $this->yasbil_hash2string($row_m['target_text']);
+                                    $closest_a = $this->yasbil_hash2string($row_m['closest_a_text']);
 
-                                    $text_size = $this->yasbil_strsize($target_text);
-                                    $html_size = $this->yasbil_strsize(
-                                        $this->yasbil_hash2string($row_m['target_html'])
-                                    );
+                                    //run-length-encoding (RLE) for dom-path
+                                    // https://www.geeksforgeeks.org/run-length-encoding/
+                                    $dom_path_str = $this->yasbil_hash2string($row_m['dom_path']);
+                                    $dom_path_arr = explode('|', $dom_path_str);
+                                    $dom_path_rle = "";
+
+                                    $n = count($dom_path_arr);
+                                    for ($i = 0; $i < $n ; $i++)
+                                    {
+                                        // Count occurrences of current character
+                                        $count = 1;
+                                        while (
+                                            $i < $n - 1
+                                            &&
+                                            $dom_path_arr[$i] == $dom_path_arr[$i + 1]
+                                        )
+                                        {
+                                            $count++;
+                                            $i++;
+                                        }
+
+                                        //add element
+                                        $dom_path_rle .= $dom_path_arr[$i];
+                                        // add count if > 1
+                                        $dom_path_rle .= $count > 1 ? "<sup>$count</sup>" : "";
+                                        // add separator if not last element
+                                        $dom_path_rle .= $i < $n - 1 ? " > " : "";
+                                    }
+
 
 ?>
                                     <tr>
@@ -1106,54 +1142,43 @@ class YASBIL_WP_Admin {
                                         <!-- event -->
                                         <td>
                                             <?=str_ireplace('MOUSE_', '', $row_m['m_event'])?>
+                                            <?=$row_m['m_event'] == "MOUSE_HOVER" ? round($row_m['hover_dur']/1000, 1)."s" : ""?>
                                         </td>
 
 
-                                        <!-- duration -->
-                                        <td class="text-end">
-                                            <?=round($row_m['hover_dur']/1000, 1)?> s
-                                        </td>
-
-                                        <!-- dimensions -->
+                                        <!-- page dimensions -->
                                         <td>
-                                            <small>
-                                                Page: <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
-                                                <br/>
-                                                Browser: <?=$row_m['browser_w']?> x <?=$row_m['browser_h']?>
-                                                <br/>
-                                                Viewport: <?=$row_m['viewport_w']?> x <?=$row_m['viewport_h']?>
-                                            </small>
+                                            <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
                                         </td>
 
-                                        <!-- locations -->
+                                        <!-- mouse location -->
                                         <td>
-                                            <small>
-                                                Mouse:
-                                                <?=$row_m['mouse_x']?>
-                                                (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%),
-                                                <?=$row_m['mouse_y']?>
-                                                (<?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
-                                                <br/>
-                                                Viewport:
-                                                <?=$row_m['page_scrolled_y']?>
-                                                (<?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>%)
-                                                to
-                                                <?=($row_m['page_scrolled_y'] + $row_m['viewport_h'])?>
-                                                (<?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>%)
-                                            </small>
+                                            <?=$row_m['mouse_x']?>,
+                                            <?=$row_m['mouse_y']?>
+
+                                            (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%,
+                                            <?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
                                         </td>
 
-                                        <!-- event tagret -->
+                                        <!-- viewport vertical percent -->
                                         <td>
-                                            <small>
-                                                <?=substr($target_text, 0, 50)?>
-                                                <br/>
-                                                Text: <?=$text_size?>k
-                                                |
-                                                HTML: <?=$html_size?>k
-                                            </small>
+                                            <?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>
+                                            &dash;
+                                            <?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>
                                         </td>
 
+                                        <!-- target -->
+                                        <td>
+                                            <?=substr($target_text, 0, 50)?>
+                                        </td>
+
+                                        <!-- closest a -->
+                                        <td><?=$closest_a?></td>
+
+                                        <!-- dom path -->
+                                        <td>
+                                            <?=$dom_path_rle?>
+                                        </td>
 
                                     </tr>
 <?php
@@ -1164,12 +1189,18 @@ class YASBIL_WP_Admin {
                         </div> <!-- table wrapper -->
 
                         <script>
-                            jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
+                            const t_mouse_<?=$row_s['session_id']?> =
+                                jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
                                 {
                                     pageLength: 10,
                                     dom: 'lfritBip', //https://datatables.net/reference/option/dom
                                     buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                    searchBuilder: true,
                                 });
+
+                            t_mouse_<?=$row_s['session_id']?>.searchBuilder.container().prependTo(
+                                t_mouse_<?=$row_s['session_id']?>.table().container()
+                            );
                         </script>
 
 
@@ -1179,27 +1210,9 @@ class YASBIL_WP_Admin {
                     <!--------------------- SERP ----------------------->
                     <div id="tab_serp_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="serps-tab">
 
-                        <?php
-                        $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
-
-                        $sql_select_serp = "
-                            SELECT *
-                            FROM $tbl_serp serp
-                            WHERE 1=1
-                            and serp.session_guid = %s
-                            ORDER BY serp.serp_ts asc
-                        ";
-
-                        $db_res_serp =  $wpdb->get_results(
-                            $wpdb->prepare($sql_select_serp, $session_guid),
-                            ARRAY_A
-                        );
-
-                        ?>
-
                         <div class="table-wrapper">
 
-                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
+                            <table id="table_serp_<?=$row_s['session_id']?>" class="display">
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
@@ -1207,31 +1220,41 @@ class YASBIL_WP_Admin {
                                     <th>Search Engine</th>
                                     <th>Search Query</th>
                                     <th>Data Length</th>
-                                    <th>Data (Top 3)</th>
                                     <th>Full Data (length)</th>
                                 </tr>
                                 </thead>
                                 <tbody>
 <?php
-                                // --------- start serp loop - for rows of table -------------
+                                $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
 
+                                $sql_select_serp = "
+                                    SELECT *
+                                    FROM $tbl_serp serp
+                                    WHERE 1=1
+                                    and serp.session_guid = %s
+                                    ORDER BY serp.serp_ts asc
+                                ";
+
+                                $db_res_serp =  $wpdb->get_results(
+                                    $wpdb->prepare($sql_select_serp, $session_guid),
+                                    ARRAY_A
+                                );
+
+                                // --------- start serp loop - for rows of table -------------
                                 foreach ($db_res_serp as $row_serp)
                                 {
 
-                                    $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
+                                    $time = $this->yasbil_milli_to_str($row_serp['serp_ts'], $tz_off);
 
-                                    $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
-                                        . parse_url($row_m['m_url'], PHP_URL_HOST)
+                                    $url_host = '<a target="_blank" href="'. esc_url($row_serp['serp_url']) . '">'
+                                        . parse_url($row_serp['serp_url'], PHP_URL_HOST)
                                         . '</a>';
 
+                                    $json_arr = json_decode($row_serp['scraped_json_arr'], true);
 
+                                    //hydrate (hash2string) inner
 
-                                    $target_text = $this->yasbil_hash2string($row_m['target_text']);
-
-                                    $text_size = $this->yasbil_strsize($target_text);
-                                    $html_size = $this->yasbil_strsize(
-                                        $this->yasbil_hash2string($row_m['target_html'])
-                                    );
+                                    $json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT);
 
 ?>
                                     <tr>
@@ -1241,57 +1264,34 @@ class YASBIL_WP_Admin {
                                         <!-- url -->
                                         <td class="text-center"><?=$url_host?></td>
 
-                                        <!-- event -->
+                                        <!-- search engine -->
                                         <td>
-                                            <?=str_ireplace('MOUSE_', '', $row_m['m_event'])?>
+                                            <?=$row_serp['search_engine']?>
+                                            <?=$row_serp['serp_offset'] > 0 ? "<br>Offset: " . $row_serp['serp_offset'] : "" ?>
+                                        </td>
+
+                                        <!-- search query -->
+                                        <td>
+                                            <?=$row_serp['search_query']?>
                                         </td>
 
 
-                                        <!-- duration -->
+                                        <!-- data length -->
                                         <td class="text-end">
-                                            <?=round($row_m['hover_dur']/1000, 1)?> s
+                                            <?=count($json_arr)?>
                                         </td>
 
-                                        <!-- dimensions -->
+
+                                        <!-- full data -->
                                         <td>
-                                            <small>
-                                                Page: <?=$row_m['page_w']?> x <?=$row_m['page_h']?>
-                                                <br/>
-                                                Browser: <?=$row_m['browser_w']?> x <?=$row_m['browser_h']?>
-                                                <br/>
-                                                Viewport: <?=$row_m['viewport_w']?> x <?=$row_m['viewport_h']?>
-                                            </small>
+                                            <button class="btn btn-outline-secondary  btn-sm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#modal_longtext"
+                                                    data-longtext="${str_safe}"
+                                                    type="button">
+                                                View Full JSON
+                                            </button>
                                         </td>
-
-                                        <!-- locations -->
-                                        <td>
-                                            <small>
-                                                Mouse:
-                                                <?=$row_m['mouse_x']?>
-                                                (<?=round($row_m['mouse_x']/$row_m['page_w']*100, 0)?>%),
-                                                <?=$row_m['mouse_y']?>
-                                                (<?=round($row_m['mouse_y']/$row_m['page_h']*100, 0)?>%)
-                                                <br/>
-                                                Viewport:
-                                                <?=$row_m['page_scrolled_y']?>
-                                                (<?=round($row_m['page_scrolled_y']/$row_m['page_h']*100, 0)?>%)
-                                                to
-                                                <?=($row_m['page_scrolled_y'] + $row_m['viewport_h'])?>
-                                                (<?=round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)?>%)
-                                            </small>
-                                        </td>
-
-                                        <!-- event tagret -->
-                                        <td>
-                                            <small>
-                                                <?=substr($target_text, 0, 50)?>
-                                                <br/>
-                                                Text: <?=$text_size?>k
-                                                |
-                                                HTML: <?=$html_size?>k
-                                            </small>
-                                        </td>
-
 
                                     </tr>
 <?php
@@ -1302,7 +1302,7 @@ class YASBIL_WP_Admin {
                         </div> <!-- table wrapper -->
 
                         <script>
-                            jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
+                            jQuery('#table_serp_<?=$row_s['session_id']?>').DataTable(
                                 {
                                     pageLength: 10,
                                     dom: 'lfritBip', //https://datatables.net/reference/option/dom
