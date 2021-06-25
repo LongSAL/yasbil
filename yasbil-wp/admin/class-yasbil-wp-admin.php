@@ -726,14 +726,21 @@ class YASBIL_WP_Admin {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
         <!-- Option 1: Bootstrap Bundle with Popper -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-
+        <!-- datatables searchbuilder-->
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/searchbuilder/1.1.0/css/searchBuilder.dataTables.min.css">
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/datetime/1.1.0/css/dataTables.dateTime.min.css">
+        <!-- datatables searchpane-->
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/searchpanes/1.3.0/css/searchPanes.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.3.3/css/select.dataTables.min.css">
+
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
         <!-- datatables searchbuilder-->
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/searchbuilder/1.1.0/js/dataTables.searchBuilder.min.js"></script>
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/datetime/1.1.0/js/dataTables.dateTime.min.js"></script>
+        <!-- datatables searchpane-->
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/searchpanes/1.3.0/js/dataTables.searchPanes.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/select/1.3.3/js/dataTables.select.min.js"></script>
         <!-- datatables buttons-->
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
         <!-- export -->
@@ -767,6 +774,24 @@ class YASBIL_WP_Admin {
             div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria select.dtsb-dropDown,
             div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria input.dtsb-input {
                 min-width: 200px;
+            }
+
+            div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane div.dtsp-topRow div.dtsp-searchCont input.dtsp-search {
+                border: 1px solid #aaa !important;
+                border-radius: 4px !important;
+                padding-left: 5px !important;
+                margin-bottom: 3px;
+                margin-left: 0px;
+            }
+
+            div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane {
+                flex-grow: 1;
+                flex-shrink: 0;
+                font-size: .9em;
+                /* margin-top: 5px; */
+                /* border: 1px dashed#ccc; */
+                /* border-top: 1px solid #777; */
+                padding-bottom: 10px;
             }
 
             div.table-wrapper {
@@ -917,17 +942,81 @@ class YASBIL_WP_Admin {
                     </li>
                 </ul>
 
-                <!-- Tab panes -->
+                <!-- ALL Tab panes -->
                 <div class="tab-content">
 
                     <!--------------------- PageVisits ----------------------->
                     <div id="tab_pagevisits_<?=$row_s['session_id']?>" class="tab-pane active" role="tabpanel" aria-labelledby="pagevisits-tab">
+<?php
+                    $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+
+                    $sql_select_pv = "
+                        SELECT *
+                        FROM $tbl_pagevisits pv
+                        WHERE 1=1
+                        and pv.session_guid = %s
+                        -- group by pv.hist_ts
+                        ORDER BY pv.pv_ts asc
+                    ";
+
+                    $db_res_pv =  $wpdb->get_results(
+                        $wpdb->prepare($sql_select_pv, $session_guid),
+                        ARRAY_A
+                    );
+
+                    // --------- start pagevisit loop - for rows of table -------------
+                    $arr_datatable = array();
+
+                    // for displaying window and tab numbers as 1,2...
+                    $win_num = 1; $tab_num = 1;
+                    $arr_win = array(); $arr_tab = array();
+
+                    foreach ($db_res_pv as $row_pv)
+                    {
+                        if(!array_key_exists($row_pv['win_id'], $arr_win)) {
+                            $arr_win[$row_pv['win_id']] = $win_num++;
+                        }
+
+                        if(!array_key_exists($row_pv['tab_id'], $arr_tab)) {
+                            $arr_tab[$row_pv['tab_id']] = $tab_num++;
+                        }
 
 
+                        // add data to display array
+                        $arr_datatable[] = [
+                            //time
+                            $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off),
+                            //window
+                            $arr_win[$row_pv['win_id']],
+                            //tab
+                            $arr_tab[$row_pv['tab_id']],
+                            //url
+                            '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
+                                . $row_pv['pv_hostname']
+                            . '</a>',
+                            // nav event
+                            str_replace('.', ' ', $row_pv['pv_event']),
+                            // page title
+                            str_replace(
+                                ['.',  '+',  '?',  '/',  '='],
+                                ['. ', '+ ', '? ', '/ ', '= '],
+                                $row_pv['pv_title']
+                            ),
+                            //text_size
+                            $this->yasbil_strsize($this->yasbil_hash2string($row_pv['pv_page_text'])),
+                            //html size
+                            $this->yasbil_strsize($this->yasbil_hash2string($row_pv['pv_page_html'])),
+                            //transition
+                            str_ireplace('YASBIL_', '', $row_pv['pv_transition_type']),
+                            // search engine, search query
+                            "{$row_pv['pv_search_engine']} {$row_pv['pv_search_query']}"
+                        ];
+
+                    } // --------- end pagevisit loop -------------
+
+?>
                         <div class="table-wrapper">
-                            <!--h2 class="table-name">Page Visits</h2-->
-
-                            <table id="table_pagevisits_<?=$row_s['session_id']?>" class="display">
+                            <table id="table_pv_<?=$row_s['session_id']?>" class="display">
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
@@ -936,116 +1025,30 @@ class YASBIL_WP_Admin {
                                     <th>URL</th>
                                     <th>Navigation Event</th>
                                     <th>Page Title</th>
-                                    <th>Text Size</th>
-                                    <th>HTML Size</th>
+                                    <th>Text Size (k)</th>
+                                    <th>HTML Size (k)</th>
                                     <th>
                                         <a target="_blank"
                                            href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
                                         >Transition</a>
                                     </th>
-                                    <th>Search Engine, Search Query</th>
+                                    <th>[Search Engine] Search Query</th>
                                 </tr>
                                 </thead>
-                                <tbody>
-<?php
-                                $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
-
-                                $sql_select_pv = "
-                                    SELECT *
-                                    FROM $tbl_pagevisits pv
-                                    WHERE 1=1
-                                    and pv.session_guid = %s
-                                    -- group by pv.hist_ts
-                                    ORDER BY pv.pv_ts asc
-                                ";
-
-                                $db_res_pv =  $wpdb->get_results(
-                                    $wpdb->prepare($sql_select_pv, $session_guid),
-                                    ARRAY_A
-                                );
-
-                                // --------- start pagevisit loop - for rows of table -------------
-                                // for displaying window and tab numbers as 1,2...
-                                $win_num = 1;
-                                $tab_num = 1;
-                                $arr_win = array();
-                                $arr_tab = array();
-
-                                foreach ($db_res_pv as $row_pv)
-                                {
-                                    if(!array_key_exists($row_pv['win_id'], $arr_win)) {
-                                        $arr_win[$row_pv['win_id']] = $win_num++;
-                                    }
-
-                                    if(!array_key_exists($row_pv['tab_id'], $arr_tab)) {
-                                        $arr_tab[$row_pv['tab_id']] = $tab_num++;
-                                    }
-
-                                    $time = $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off);
-
-                                    $window = $arr_win[$row_pv['win_id']];
-                                    $tab = $arr_tab[$row_pv['tab_id']];
-
-                                    //$transition_type = $row_pv['pv_transition_type'];
-
-                                    $url_host = '<a target="_blank" href="'. esc_url($row_pv['pv_url']) . '">'
-                                        . $row_pv['pv_hostname']
-                                        . '</a>';
-
-                                    $text_size = $this->yasbil_strsize(
-                                            $this->yasbil_hash2string($row_pv['pv_page_text'])
-                                    );
-
-                                    $html_size = $this->yasbil_strsize(
-                                        $this->yasbil_hash2string($row_pv['pv_page_html'])
-                                    );
-
-?>
-                                    <tr>
-                                        <td><?=$time?></td>
-                                        <td><?=$window?></td>
-                                        <td><?=$tab?></td>
-                                        <td><?=$url_host?></td>
-                                        <td><?=str_replace('.', ' ', $row_pv['pv_event'])?></td>
-
-                                        <td>
-                                            <?=str_replace(
-                                                ['.',  '+',  '?',  '/',  '='],
-                                                ['. ', '+ ', '? ', '/ ', '= '],
-                                                $row_pv['pv_title']
-                                            )?>
-                                        </td>
-
-                                        <td class="text-end"><?=$text_size?> k</td>
-                                        <td class="text-end"><?=$html_size?> k</td>
-
-                                        <td class="text-center">
-                                            <?=str_ireplace('YASBIL_', '', $row_pv['pv_transition_type'])?>
-                                        </td>
-                                        <td>
-                                            <?="<b>{$row_pv['pv_search_engine']}</b><br/>{$row_pv['pv_search_query']}"?>
-                                        </td>
-                                    </tr>
-<?php
-                                } // --------- end pagevisit loop -------------
-?>
-                                </tbody>
                             </table>
                         </div> <!-- table wrapper -->
 
                         <script>
-                            const t_pagevisits_<?=$row_s['session_id']?> =
-                                jQuery('#table_pagevisits_<?=$row_s['session_id']?>').DataTable(
-                                {
-                                    pageLength: 10,
-                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
-                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                    searchBuilder: true,
-                                });
+                            const data_pv_<?=$row_s['session_id']?> = <?php echo json_encode($arr_datatable); ?>;
 
-                            t_pagevisits_<?=$row_s['session_id']?>.searchBuilder.container().prependTo(
-                                t_pagevisits_<?=$row_s['session_id']?>.table().container()
-                            );
+                            jQuery('#table_pv_<?=$row_s['session_id']?>').DataTable({
+                                data: data_pv_<?=$row_s['session_id']?>,
+                                pageLength: 10, searchBuilder: true,
+                                searchPanes: {cascadePanes: true, viewTotal: true},
+                                language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                columnDefs: [{targets: [8], searchPanes: {header: 'Transition'},}],
+                                dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                            });
                         </script>
 
 
@@ -1055,82 +1058,85 @@ class YASBIL_WP_Admin {
                     <!--------------------- Mouse ----------------------->
                     <div id="tab_mouse_<?=$row_s['session_id']?>"  class="tab-pane"  role="tabpanel" aria-labelledby="mouse-tab">
 
-                        <div class="table-wrapper">
 
-                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
-                                <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>URL</th>
-                                    <th>Event</th>
-                                    <th>Page Dim<br/>w x h</th>
-                                    <th>Mouse Loc<br/>x, y (%, %)</th>
-                                    <th>Viewport as Page Height %</th>
-                                    <th>Target</th>
-                                    <th>Closest Anchor Tag</th>
-                                    <th>DOM Path</th>
-                                </tr>
-                                </thead>
-                                <tbody>
 <?php
-                                $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
+                    $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
 
-                                $sql_select_mouse = "
-                                    SELECT *
-                                    FROM $tbl_mouse m
-                                    WHERE 1=1
-                                    and m.session_guid = %s
-                                    ORDER BY m.m_ts asc
-                                ";
+                    $sql_select_mouse = "
+                        SELECT *
+                        FROM $tbl_mouse m
+                        WHERE 1=1
+                        and m.session_guid = %s
+                        ORDER BY m.m_ts asc
+                    ";
 
-                                $db_res_mouse =  $wpdb->get_results(
-                                    $wpdb->prepare($sql_select_mouse, $session_guid),
-                                    ARRAY_A
-                                );
+                    $db_res_mouse =  $wpdb->get_results(
+                        $wpdb->prepare($sql_select_mouse, $session_guid),
+                        ARRAY_A
+                    );
 
-                                // --------- start mouse loop - for rows of table -------------
-                                foreach ($db_res_mouse as $row_m)
-                                {
+                    // --------- start mouse loop - for rows of table -------------
+                    $arr_datatable = array();
+                    foreach ($db_res_mouse as $row_m)
+                    {
+                        $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
 
-                                    $time = $this->yasbil_milli_to_str($row_m['m_ts'], $tz_off);
+                        $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
+                            . parse_url($row_m['m_url'], PHP_URL_HOST)
+                            . '</a>';
 
-                                    $url_host = '<a target="_blank" href="'. esc_url($row_m['m_url']) . '">'
-                                        . parse_url($row_m['m_url'], PHP_URL_HOST)
-                                        . '</a>';
+                        $target_text = $this->yasbil_hash2string($row_m['target_text']);
+                        $closest_a = $this->yasbil_hash2string($row_m['closest_a_text']);
 
-                                    $target_text = $this->yasbil_hash2string($row_m['target_text']);
-                                    $closest_a = $this->yasbil_hash2string($row_m['closest_a_text']);
+                        // ------ run-length-encoding (RLE) for dom-path --------
+                        // https://www.geeksforgeeks.org/run-length-encoding/
+                        $dom_path_str = $this->yasbil_hash2string($row_m['dom_path']);
+                        $dom_path_arr = explode('|', $dom_path_str);
+                        $dom_path_rle = "";
 
-                                    //run-length-encoding (RLE) for dom-path
-                                    // https://www.geeksforgeeks.org/run-length-encoding/
-                                    $dom_path_str = $this->yasbil_hash2string($row_m['dom_path']);
-                                    $dom_path_arr = explode('|', $dom_path_str);
-                                    $dom_path_rle = "";
+                        $n = count($dom_path_arr);
+                        for ($i = 0; $i < $n ; $i++)
+                        {
+                            // Count occurrences of current character
+                            $count = 1;
+                            while (
+                                $i < $n - 1
+                                &&
+                                $dom_path_arr[$i] == $dom_path_arr[$i + 1]
+                            )
+                            {
+                                $count++;
+                                $i++;
+                            }
 
-                                    $n = count($dom_path_arr);
-                                    for ($i = 0; $i < $n ; $i++)
-                                    {
-                                        // Count occurrences of current character
-                                        $count = 1;
-                                        while (
-                                            $i < $n - 1
-                                            &&
-                                            $dom_path_arr[$i] == $dom_path_arr[$i + 1]
-                                        )
-                                        {
-                                            $count++;
-                                            $i++;
-                                        }
+                            //add element
+                            $dom_path_rle .= $dom_path_arr[$i];
+                            // add count if > 1
+                            $dom_path_rle .= $count > 1 ? "<sup>$count</sup>" : "";
+                            // add separator if not last element
+                            $dom_path_rle .= $i < $n - 1 ? " > " : "";
+                        }
+                        // ------- end: run length encoding --------
 
-                                        //add element
-                                        $dom_path_rle .= $dom_path_arr[$i];
-                                        // add count if > 1
-                                        $dom_path_rle .= $count > 1 ? "<sup>$count</sup>" : "";
-                                        // add separator if not last element
-                                        $dom_path_rle .= $i < $n - 1 ? " > " : "";
-                                    }
+                        // add data to display array
+                        $arr_datatable[] = [
+                            $time,
+                            $window,
+                            $tab,
+                            $url_host,
+                            str_replace('.', ' ', $row_pv['pv_event']),
+                            str_replace(
+                                ['.',  '+',  '?',  '/',  '='],
+                                ['. ', '+ ', '? ', '/ ', '= '],
+                                $row_pv['pv_title']
+                            ),
+                            $text_size,
+                            $html_size,
+                            str_ireplace('YASBIL_', '', $row_pv['pv_transition_type']),
+                            "{$row_pv['pv_search_engine']} {$row_pv['pv_search_query']}"
+                        ];
 
-
+                    } // --------- end mouse loop -------------
 ?>
                                     <tr>
                                         <!-- ts -->
@@ -1182,25 +1188,31 @@ class YASBIL_WP_Admin {
 
                                     </tr>
 <?php
-                                } // --------- end pagevisit loop -------------
+
 ?>
-                                </tbody>
+                        <div class="table-wrapper">
+                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>URL</th>
+                                    <th>Event</th>
+                                    <th>Page Dim<br/>w x h</th>
+                                    <th>Mouse Loc<br/>x, y (%, %)</th>
+                                    <th>Viewport as Page Height %</th>
+                                    <th>Target</th>
+                                    <th>Closest Anchor Tag</th>
+                                    <th>DOM Path</th>
+                                </tr>
                             </table>
                         </div> <!-- table wrapper -->
 
                         <script>
-                            const t_mouse_<?=$row_s['session_id']?> =
-                                jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable(
-                                {
-                                    pageLength: 10,
-                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
-                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                    searchBuilder: true,
-                                });
-
-                            t_mouse_<?=$row_s['session_id']?>.searchBuilder.container().prependTo(
-                                t_mouse_<?=$row_s['session_id']?>.table().container()
-                            );
+                            jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable({
+                                pageLength: 10, searchBuilder: true,
+                                dom: 'QlfritBip', //https://datatables.net/reference/option/dom
+                                buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                            });
                         </script>
 
 
