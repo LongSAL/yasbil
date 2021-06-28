@@ -733,6 +733,8 @@ class YASBIL_WP_Admin {
         <!-- datatables searchpane-->
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/searchpanes/1.3.0/css/searchPanes.dataTables.min.css">
         <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.3.3/css/select.dataTables.min.css">
+        <!-- datatables rowgroup-->
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/rowgroup/1.1.3/css/rowGroup.dataTables.min.css">
 
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
         <!-- datatables searchbuilder-->
@@ -741,6 +743,9 @@ class YASBIL_WP_Admin {
         <!-- datatables searchpane-->
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/searchpanes/1.3.0/js/dataTables.searchPanes.min.js"></script>
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/select/1.3.3/js/dataTables.select.min.js"></script>
+        <!-- datatables rowgroup-->
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/rowgroup/1.1.3/js/dataTables.rowGroup.min.js"></script>
+
         <!-- datatables buttons-->
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
         <!-- export -->
@@ -871,10 +876,12 @@ class YASBIL_WP_Admin {
         );
 
         // -------- start sessions loop ------------
+        $session_disp_num = 0;
         foreach ($db_res_sessions as $row_s)
         {
             $session_guid = $row_s['session_guid'];
             $tz_off = $row_s['session_tz_offset'];
+            $session_disp_num++;
 ?>
             <hr style="border: 1px solid #777; margin: 20px 0px 10px;">
 
@@ -912,31 +919,36 @@ class YASBIL_WP_Admin {
                 <ul class="nav nav-pills" id="nav_tabs_<?=$row_s['session_id']?>" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active"
-                                id="pagevisits-tab" data-bs-toggle="tab" data-bs-target="#tab_pagevisits_<?=$row_s['session_id']?>"
+                                id="btn-pagevisits_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_pagevisits_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_pagevisits_<?=$row_s['session_id']?>" aria-selected="true"
                         >Page Visits</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
-                                id="mouse-tab" data-bs-toggle="tab" data-bs-target="#tab_mouse_<?=$row_s['session_id']?>"
+                                id="btn-mouse_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_mouse_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_mouse_<?=$row_s['session_id']?>" aria-selected="false"
                         >Mouse Events</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
-                                id="serps-tab" data-bs-toggle="tab" data-bs-target="#tab_serp_<?=$row_s['session_id']?>"
+                                id="btn-serp_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_serp_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_serp_<?=$row_s['session_id']?>" aria-selected="false"
                         >SERPs</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
-                                id="webnav-tab" data-bs-toggle="tab" data-bs-target="#tab_webnav_<?=$row_s['session_id']?>"
+                                id="btn-webnav_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_webnav_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_webnav_<?=$row_s['session_id']?>" aria-selected="false"
                         >Web Events</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
-                                id="largestring-tab" data-bs-toggle="tab" data-bs-target="#tab_largestring_<?=$row_s['session_id']?>"
+                                id="btn-largestring_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_largestring_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_largestring_<?=$row_s['session_id']?>" aria-selected="false"
                         >Text Content</button>
                     </li>
@@ -985,10 +997,12 @@ class YASBIL_WP_Admin {
                         $arr_datatable[] = [
                             //time
                             $this->yasbil_milli_to_str($row_pv['pv_ts'], $tz_off),
-                            //window
-                            $arr_win[$row_pv['win_id']],
-                            //tab
-                            $arr_tab[$row_pv['tab_id']],
+                            //window | tab
+                            sprintf(
+                                "%s | %s",
+                                $arr_win[$row_pv['win_id']],
+                                $arr_tab[$row_pv['tab_id']]
+                            ),
                             //url
                             sprintf(
                                 "<a href='%s' target='_blank'>%s</a>",
@@ -1032,8 +1046,7 @@ class YASBIL_WP_Admin {
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
-                                    <th>Window</th>
-                                    <th>Tab</th>
+                                    <th>Window | Tab</th>
                                     <th>URL</th>
                                     <th>Navigation Event</th>
                                     <th>Page Title</th>
@@ -1055,11 +1068,22 @@ class YASBIL_WP_Admin {
 
                             jQuery('#table_pv_<?=$row_s['session_id']?>').DataTable({
                                 data: data_pv_<?=$row_s['session_id']?>,
-                                pageLength: 10, searchBuilder: true,
+                                pageLength: 10, autoWidth: false, searchBuilder: true,
                                 searchPanes: {cascadePanes: true, viewTotal: true},
                                 language: {searchPanes: {countFiltered: '{shown} / {total}'}},
                                 dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                columnDefs: [{targets: [8], searchPanes: {header: 'Transition'},}],
+                                columnDefs: [
+                                    {targets: [7], searchPanes: {header: 'Transition'},},
+                                    {targets: [0], searchPanes: {show: false},}
+                                ],
+                            });
+
+                            // rebuild search pane sometime after user clicks tab button
+                            // to fix broken layout of search panes
+                            jQuery('#btn-pagevisits_<?=$row_s['session_id']?>').click(function () {
+                                setTimeout(function(){
+                                    jQuery('#table_pv_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
+                                }, 10);
                             });
                         </script>
                     </div> <!-------- end: PageVisits ------->
@@ -1129,10 +1153,11 @@ class YASBIL_WP_Admin {
                             ),
                             // event
                             sprintf(
-                                "%s %s",
-                                str_ireplace('MOUSE_', '', $row_m['m_event']),
-                                $row_m['m_event'] == "MOUSE_HOVER" ? round($row_m['hover_dur']/1000, 1)."s" : ""
+                                "%s",
+                                str_ireplace('MOUSE_', '', $row_m['m_event'])
                             ),
+                            // hover dur
+                            $row_m['m_event'] == "MOUSE_HOVER" ? round($row_m['hover_dur']/1000, 1) : "",
                             // Page Dim
                             sprintf(
                                 "%s x %s",
@@ -1153,14 +1178,14 @@ class YASBIL_WP_Admin {
                             ),
                             // Target
                             substr(
-                                'test',
+                                'XX',
                                 //mb_convert_encoding(
                                 //    $this->yasbil_hash2string($row_m['target_text']), 'UTF-8', 'UTF-8'
                                 //),
                                 0, 50
                             ),
                             // Closest Anchor Tag
-                            'test', //$this->yasbil_hash2string($row_m['closest_a_text']),
+                            'XX', //$this->yasbil_hash2string($row_m['closest_a_text']),
                             // DOM Path
                             $dom_path_rle,
                         ];
@@ -1180,12 +1205,13 @@ class YASBIL_WP_Admin {
 
 ?>
                         <div class="table-wrapper">
-                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display" style="width: 100%">
+                            <table id="table_mouse_<?=$row_s['session_id']?>" class="display">
                                 <thead>
                                 <tr>
                                     <th>Timestamp</th>
                                     <th>URL</th>
                                     <th>Event</th>
+                                    <th>Hover Dur</th>
                                     <th>Page Dim<br/>w x h</th>
                                     <th>Mouse Loc<br/>x, y (%, %)</th>
                                     <th>Viewport as Page Height %</th>
@@ -1201,15 +1227,24 @@ class YASBIL_WP_Admin {
 
                             jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable({
                                 data: data_mouse_<?=$row_s['session_id']?>,
-                                pageLength: 10, searchBuilder: true,
-                                //searchPanes: {cascadePanes: true, viewTotal: true},
-                                //language: {searchPanes: {countFiltered: '{shown} / {total}'}},
-                                dom: 'QlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                /*columnDefs: [
-                                    {targets: [3], searchPanes: {header: 'Page Dim'},},
-                                    {targets: [4], searchPanes: {header: 'Mouse Loc'},},
-                                    {targets: [5], searchPanes: {header: 'Viewport'},},
-                                ],*/
+                                pageLength: 10, autoWidth: false, searchBuilder: true,
+                                searchPanes: {cascadePanes: true, viewTotal: true},
+                                language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                columnDefs: [
+                                    {targets: [0], searchPanes: {show: false},},
+                                    {targets: [4], searchPanes: {header: 'Page Dim'},},
+                                    {targets: [5], searchPanes: {header: 'Mouse Loc'},},
+                                    {targets: [6], searchPanes: {header: 'Viewport'},},
+                                ],
+                            });
+
+                            // rebuild search pane sometime after user clicks tab button
+                            // to fix broken layout of search panes
+                            jQuery('#btn-mouse_<?=$row_s['session_id']?>').click(function () {
+                                setTimeout(function(){
+                                    jQuery('#table_mouse_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
+                                }, 10);
                             });
                         </script>
                     </div> <!-------- end: Mouse ------->
@@ -1217,9 +1252,85 @@ class YASBIL_WP_Admin {
 
                     <!--------------------- SERP ----------------------->
                     <div id="tab_serp_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="serps-tab">
+<?php
+                        $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
 
+                        $sql_select_serp = "
+                            SELECT *
+                            FROM $tbl_serp serp
+                            WHERE 1=1
+                            and serp.session_guid = %s
+                            ORDER BY serp.serp_ts asc
+                        ";
+
+                        $db_res_serp =  $wpdb->get_results(
+                            $wpdb->prepare($sql_select_serp, $session_guid),
+                            ARRAY_A
+                        );
+
+                        // --------- start serp loop - for rows of table -------------
+                        $arr_datatable = [];
+                        foreach ($db_res_serp as $row_serp)
+                        {
+
+                            $json_arr = json_decode($row_serp['scraped_json_arr'], true);
+
+                            //TODO: hydrate (hash2string) inner
+
+                            $json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT);
+
+                            // full data html
+                            $full_data_html = "N/A";
+
+                            if(count($json_arr) > 0)
+                            {
+                                $full_data_html = "
+                                    <button class=\"btn btn-outline-secondary  btn-sm\"
+                                            data-bs-toggle=\"modal\"
+                                            data-bs-target=\"#modal_serp_full_{$row_s['session_id']}\"
+                                            data-longtext=\"Hello\"
+                                            type=\"button\">
+                                        View Full JSON
+                                    </button>
+                                ";
+                            }
+
+                            // add data to display array
+                            $arr_datatable[] = [
+                                //time
+                                $this->yasbil_milli_to_str($row_serp['serp_ts'], $tz_off),
+                                //url
+                                sprintf(
+                                    "<a href='%s' target='_blank'>%s</a>",
+                                    esc_url($row_serp['serp_url']),
+                                    parse_url($row_serp['serp_url'], PHP_URL_HOST)
+                                ),
+                                // search engine
+                                $row_serp['search_engine'],
+                                // search query
+                                $row_serp['search_query'],
+                                // serp offset
+                                $row_serp['serp_offset'],
+                                // data length
+                                count($json_arr),
+                                // full data
+                                $full_data_html,
+                            ];
+                        } // --------- end serp loop -------------
+
+                        $js_data = json_encode($arr_datatable);
+
+                        if (!$js_data)
+                        {
+                            echo "<div class='alert alert-danger'>"
+                                . json_last_error_msg()
+                                ."</div>";
+
+                            $js_data = "[]";
+                        }
+
+?>
                         <div class="table-wrapper">
-
                             <table id="table_serp_<?=$row_s['session_id']?>" class="display">
                                 <thead>
                                 <tr>
@@ -1227,95 +1338,34 @@ class YASBIL_WP_Admin {
                                     <th>URL</th>
                                     <th>Search Engine</th>
                                     <th>Search Query</th>
+                                    <th>SERP Offset</th>
                                     <th>Data Length</th>
-                                    <th>Full Data (length)</th>
+                                    <th>Full Data</th>
                                 </tr>
                                 </thead>
-                                <tbody>
-<?php
-                                $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
-
-                                $sql_select_serp = "
-                                    SELECT *
-                                    FROM $tbl_serp serp
-                                    WHERE 1=1
-                                    and serp.session_guid = %s
-                                    ORDER BY serp.serp_ts asc
-                                ";
-
-                                $db_res_serp =  $wpdb->get_results(
-                                    $wpdb->prepare($sql_select_serp, $session_guid),
-                                    ARRAY_A
-                                );
-
-                                // --------- start serp loop - for rows of table -------------
-                                foreach ($db_res_serp as $row_serp)
-                                {
-
-                                    $time = $this->yasbil_milli_to_str($row_serp['serp_ts'], $tz_off);
-
-                                    $url_host = '<a target="_blank" href="'. esc_url($row_serp['serp_url']) . '">'
-                                        . parse_url($row_serp['serp_url'], PHP_URL_HOST)
-                                        . '</a>';
-
-                                    $json_arr = json_decode($row_serp['scraped_json_arr'], true);
-
-                                    //hydrate (hash2string) inner
-
-                                    $json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT);
-
-?>
-                                    <tr>
-                                        <!-- ts -->
-                                        <td><?=$time?></td>
-
-                                        <!-- url -->
-                                        <td class="text-center"><?=$url_host?></td>
-
-                                        <!-- search engine -->
-                                        <td>
-                                            <?=$row_serp['search_engine']?>
-                                            <?=$row_serp['serp_offset'] > 0 ? "<br>Offset: " . $row_serp['serp_offset'] : "" ?>
-                                        </td>
-
-                                        <!-- search query -->
-                                        <td>
-                                            <?=$row_serp['search_query']?>
-                                        </td>
-
-
-                                        <!-- data length -->
-                                        <td class="text-end">
-                                            <?=count($json_arr)?>
-                                        </td>
-
-
-                                        <!-- full data -->
-                                        <td>
-                                            <button class="btn btn-outline-secondary  btn-sm"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#modal_longtext"
-                                                    data-longtext="${str_safe}"
-                                                    type="button">
-                                                View Full JSON
-                                            </button>
-                                        </td>
-
-                                    </tr>
-<?php
-                                } // --------- end serp loop -------------
-?>
-                                </tbody>
                             </table>
                         </div> <!-- table wrapper -->
 
                         <script>
-                            jQuery('#table_serp_<?=$row_s['session_id']?>').DataTable(
-                                {
-                                    pageLength: 10,
-                                    dom: 'lfritBip', //https://datatables.net/reference/option/dom
-                                    buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                });
+                            const data_serp_<?=$row_s['session_id']?> = <?=$js_data?>;
+
+                            jQuery('#table_serp_<?=$row_s['session_id']?>').DataTable({
+                                data: data_serp_<?=$row_s['session_id']?>,
+                                pageLength: 10, autoWidth: false, searchBuilder: true,
+                                searchPanes: {cascadePanes: true, viewTotal: true},
+                                language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                columnDefs: [{searchPanes: {show: false}, targets: [0]},],
+                            });
+
+                            // rebuild search pane sometime after user clicks tab button
+                            // to fix broken layout of search panes
+                            jQuery('#btn-serp_<?=$row_s['session_id']?>').click(function () {
+                                setTimeout(function(){
+                                    jQuery('#table_serp_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
+                                }, 10);
+                            });
+
                         </script>
 
                     </div> <!-------- end: SERP ------->
@@ -1323,13 +1373,212 @@ class YASBIL_WP_Admin {
 
                     <!--------------------- WebNav ----------------------->
                     <div id="tab_webnav_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="webnav-tab">
-                        content 4
+<?php
+                        $tbl_webnav = $wpdb->prefix . "yasbil_session_webnav";
+
+                        $sql_select_webnav = "
+                            SELECT *
+                            FROM $tbl_webnav w
+                            WHERE 1=1
+                            and w.session_guid = %s
+                            ORDER BY w.webnav_ts asc
+                        ";
+
+                        $db_res_webnav =  $wpdb->get_results(
+                            $wpdb->prepare($sql_select_webnav, $session_guid),
+                            ARRAY_A
+                        );
+
+                        // for displaying window and tab numbers as 1,2...
+                        $tab_num = 1; $arr_tab = array();
+
+                        // --------- start webnav loop - for rows of table -------------
+                        $arr_datatable = [];
+                        foreach ($db_res_webnav as $row_w)
+                        {
+                            if(!array_key_exists($row_w['tab_id'], $arr_tab)) {
+                                $arr_tab[$row_w['tab_id']] = $tab_num++;
+                            }
+
+                            // add data to display array
+                            $arr_datatable[] = [
+                                //time
+                                $this->yasbil_milli_to_str($row_w['webnav_ts'], $tz_off),
+                                //tab
+                                $arr_tab[$row_w['tab_id']],
+                                //url
+                                sprintf(
+                                    "<a href='%s' target='_blank'>%s</a>",
+                                    esc_url($row_w['webnav_url']),
+                                    parse_url($row_w['webnav_url'], PHP_URL_HOST)
+                                ),
+                                // event
+                                str_replace('.', ' ', $row_w['webnav_event']),
+                                // transition
+                                sprintf(
+                                    "%s %s",
+                                    $row_w['webnav_transition_type'],
+                                    $row_w['webnav_transition_qual']
+                                ),
+                            ];
+                        } // --------- end webnav loop -------------
+
+                        $js_data = json_encode($arr_datatable);
+
+                        if (!$js_data)
+                        {
+                            echo "<div class='alert alert-danger'>"
+                                . json_last_error_msg()
+                                ."</div>";
+
+                            $js_data = "[]";
+                        }
+?>
+                        <div class="table-wrapper">
+                            <table id="table_webnav_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Tab</th>
+                                    <th>URL</th>
+                                    <th>Event</th>
+                                    <th>Transition</th>
+                                </tr>
+                                </thead>
+                            </table>
+                        </div> <!-- table wrapper -->
+
+                        <script>
+                            const data_webnav_<?=$row_s['session_id']?> = <?=$js_data?>;
+
+                            jQuery('#table_webnav_<?=$row_s['session_id']?>').DataTable({
+                                data: data_webnav_<?=$row_s['session_id']?>,
+                                pageLength: 10, autoWidth: false, searchBuilder: true,
+                                searchPanes: {cascadePanes: true, viewTotal: true},
+                                language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                rowGroup: {dataSrc: 2},
+                                columnDefs: [{searchPanes: {show: false}, targets: [0]},],
+                            });
+
+                            // rebuild search pane sometime after user clicks tab button
+                            // to fix broken layout of search panes
+                            jQuery('#btn-webnav_<?=$row_s['session_id']?>').click(function () {
+                                setTimeout(function(){
+                                    jQuery('#table_webnav_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
+                                }, 10);
+                            });
+
+                        </script>
                     </div>  <!-------- end: WebNav ------->
 
 
                     <!--------------------- Largestring ----------------------->
                     <div id="tab_largestring_<?=$row_s['session_id']?>" class="tab-pane"  role="tabpanel" aria-labelledby="largestring-tab">
-                        content 5
+                        <div class="alert alert-info">
+                            Across all sessions. So only shown in the top/last session
+                        </div>
+<?php
+                    $tbl_largestring = $wpdb->prefix . "yasbil_largestring";
+
+                    $sql_select_largestring = "
+                        SELECT l.sync_ts
+                             , count(distinct l.string_guid) n_rows
+                             , sum(LENGTH(l.string_body)) tot_str_len
+                        FROM $tbl_largestring l
+                        WHERE 1 = $session_disp_num 
+                        and l.user_id = %s
+                        group by l.sync_ts
+                        order by l.sync_ts desc
+                    ";
+
+                    //1=XX to show this table only in the top session
+                    // tab (to reduce page size)
+
+
+                    $db_res_largestring =  $wpdb->get_results(
+                        $wpdb->prepare($sql_select_largestring, $user_id),
+                        ARRAY_A
+                    );
+
+
+                    // --------- start webnav loop - for rows of table -------------
+                    $arr_datatable = [];
+                    foreach ($db_res_largestring as $row_ls)
+                    {
+                        // add data to display array
+                        $arr_datatable[] = [
+                            //sync time
+                            $this->yasbil_milli_to_str($row_ls['sync_ts'], $tz_off),
+
+                            // # rows
+                            $row_ls['n_rows'],
+
+                            // size
+                            $this->yasbil_hr_size($row_ls['tot_str_len']),
+
+                            //url
+                            /*sprintf(
+                                "<a href='%s' target='_blank'>%s</a>",
+                                esc_url($row_ls['src_url']),
+                                parse_url($row_ls['src_url'], PHP_URL_HOST)
+                            ),*/
+
+                        ];
+                    } // --------- end webnav loop -------------
+
+                    $js_data = json_encode($arr_datatable);
+
+                    if (!$js_data)
+                    {
+                        echo "<div class='alert alert-danger'>"
+                            . json_last_error_msg()
+                            ."</div>";
+
+                        $js_data = "[]";
+                    }
+
+                    if($session_disp_num == 1)
+                    {
+?>
+                        <div class="table-wrapper">
+                            <table id="table_ls_<?=$row_s['session_id']?>" class="display">
+                                <thead>
+                                <tr>
+                                    <th>Sync Time</th>
+                                    <th># Rows</th>
+                                    <th>Upload Size</th>
+                                </tr>
+                                </thead>
+                            </table>
+                        </div> <!-- table wrapper -->
+
+                        <script>
+                            const data_largestring_<?=$row_s['session_id']?> = <?=$js_data?>;
+
+                            jQuery('#table_ls_<?=$row_s['session_id']?>').DataTable({
+                                data: data_largestring_<?=$row_s['session_id']?>,
+                                pageLength: 10, autoWidth: false, searchBuilder: true,
+                                searchPanes: {cascadePanes: true, viewTotal: true},
+                                language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+                                dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+                                //rowGroup: {dataSrc: 0},
+                                //columnDefs: [{searchPanes: {show: false}, targets: [0]},],
+                                columnDefs: [{ className: "text-end", targets: [ 1,2 ] }],
+                            });
+
+                            // rebuild search pane sometime after user clicks tab button
+                            // to fix broken layout of search panes
+                            jQuery('#btn-largestring_<?=$row_s['session_id']?>').click(function () {
+                                setTimeout(function(){
+                                    jQuery('#table_ls_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
+                                }, 10);
+                            });
+
+                        </script>
+<?php              } // if session_disp_num > 1
+?>
+
                     </div>  <!-------- end: LargeString ------->
 
                 </div> <!-- end: tab-content -->
@@ -1840,6 +2089,25 @@ class YASBIL_WP_Admin {
 //        else
 //            res = (num_chars / _KB).toFixed(1) + 'KB'
 
+    }
+
+    // human readable size
+    function yasbil_hr_size($p_bytes)
+    {
+        $_KB = 1024;
+        $_MB = $_KB * 1024;
+        $_GB = $_MB * 1024;
+
+        $res = $p_bytes;
+
+        if($p_bytes >= $_GB)
+            $res = round($p_bytes / $_GB, 1) . 'GB';
+        else if($p_bytes >= $_MB)
+            $res = round($p_bytes / $_MB, 1) . 'MB';
+        else
+            $res = round($p_bytes / $_KB, 1) . 'KB';
+
+        return $res;
     }
 
 
