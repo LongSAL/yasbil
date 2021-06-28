@@ -1481,15 +1481,17 @@ class YASBIL_WP_Admin {
 <?php
                     $tbl_largestring = $wpdb->prefix . "yasbil_largestring";
 
+                    // double %%s for wpdab()
+                    // https://wordpress.stackexchange.com/a/140688
                     $sql_select_largestring = "
-                        SELECT l.sync_ts
+                        SELECT FROM_UNIXTIME(l.sync_ts/1000, '%%Y-%%m-%%d %%H:%%i') sync_time_mins
                              , count(distinct l.string_guid) n_rows
                              , sum(LENGTH(l.string_body)) tot_str_len
                         FROM $tbl_largestring l
                         WHERE 1 = $session_disp_num 
                         and l.user_id = %s
-                        group by l.sync_ts
-                        order by l.sync_ts desc
+                        group by 1
+                        order by 1 desc
                     ";
 
                     //1=XX to show this table only in the top session
@@ -1501,31 +1503,26 @@ class YASBIL_WP_Admin {
                         ARRAY_A
                     );
 
-
-                    // --------- start webnav loop - for rows of table -------------
+                    // --------- start largestring loop - for rows of table -------------
                     $arr_datatable = [];
                     foreach ($db_res_largestring as $row_ls)
                     {
                         // add data to display array
                         $arr_datatable[] = [
                             //sync time
-                            $this->yasbil_milli_to_str($row_ls['sync_ts'], $tz_off),
-
+                            $row_ls['sync_time_mins'],
                             // # rows
                             $row_ls['n_rows'],
-
                             // size
                             $this->yasbil_hr_size($row_ls['tot_str_len']),
-
                             //url
                             /*sprintf(
                                 "<a href='%s' target='_blank'>%s</a>",
                                 esc_url($row_ls['src_url']),
                                 parse_url($row_ls['src_url'], PHP_URL_HOST)
                             ),*/
-
                         ];
-                    } // --------- end webnav loop -------------
+                    } // --------- end largestring loop -------------
 
                     $js_data = json_encode($arr_datatable);
 
@@ -1558,12 +1555,11 @@ class YASBIL_WP_Admin {
 
                             jQuery('#table_ls_<?=$row_s['session_id']?>').DataTable({
                                 data: data_largestring_<?=$row_s['session_id']?>,
+                                order: [[ 0, "desc" ]],
                                 pageLength: 10, autoWidth: false, searchBuilder: true,
                                 searchPanes: {cascadePanes: true, viewTotal: true},
                                 language: {searchPanes: {countFiltered: '{shown} / {total}'}},
                                 dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                //rowGroup: {dataSrc: 0},
-                                //columnDefs: [{searchPanes: {show: false}, targets: [0]},],
                                 columnDefs: [{ className: "text-end", targets: [ 1,2 ] }],
                             });
 
@@ -2101,11 +2097,11 @@ class YASBIL_WP_Admin {
         $res = $p_bytes;
 
         if($p_bytes >= $_GB)
-            $res = round($p_bytes / $_GB, 1) . 'GB';
+            $res = round($p_bytes / $_GB, 1) . ' GB';
         else if($p_bytes >= $_MB)
-            $res = round($p_bytes / $_MB, 1) . 'MB';
+            $res = round($p_bytes / $_MB, 1) . ' MB';
         else
-            $res = round($p_bytes / $_KB, 1) . 'KB';
+            $res = round($p_bytes / $_KB, 1) . ' KB';
 
         return $res;
     }
