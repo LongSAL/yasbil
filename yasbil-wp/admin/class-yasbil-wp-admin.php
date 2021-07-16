@@ -820,12 +820,7 @@ class YASBIL_WP_Admin {
             function html_encode(e)
             {
                 const res = JSON.stringify(e, null, 2);
-                console.log(res)
                 return res;
-                /*return e.replace(/[^]/g,function(e)
-                {
-                    return"&#"+e.charCodeAt(0)+";"
-                });*/
             }
         </script>
 
@@ -1041,7 +1036,7 @@ class YASBIL_WP_Admin {
 
                     } // --------- end pagevisit loop -------------
 
-                    $js_data = json_encode($arr_datatable);
+                    $js_data = json_encode($arr_datatable, JSON_INVALID_UTF8_SUBSTITUTE);
 
                     if (!$js_data)
                     {
@@ -1189,22 +1184,22 @@ class YASBIL_WP_Admin {
                                 round(($row_m['page_scrolled_y'] + $row_m['viewport_h'])/$row_m['page_h']*100, 0)
                             ),
                             // Target
-                            substr(
-                                'XX',
-                                //mb_convert_encoding(
-                                //    $this->yasbil_hash2string($row_m['target_text']), 'UTF-8', 'UTF-8'
-                                //),
-                                0, 50
+                            mb_substr(
+                                $this->yasbil_hash2string($row_m['target_text']),
+                                0, 50, "UTF-8"
                             ),
                             // Closest Anchor Tag
-                            'XX', //$this->yasbil_hash2string($row_m['closest_a_text']),
+                            mb_substr(
+                                $this->yasbil_hash2string($row_m['closest_a_text']),
+                                0, 50, "UTF-8"
+                            ),
                             // DOM Path
                             $dom_path_rle,
                         ];
 
                     } // --------- end mouse loop -------------
 
-                    $js_data = json_encode($arr_datatable);
+                    $js_data = json_encode($arr_datatable, JSON_INVALID_UTF8_SUBSTITUTE);
 
                     if (!$js_data)
                     {
@@ -1299,7 +1294,7 @@ class YASBIL_WP_Admin {
 
                             //$json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT|JSON_HEX_QUOT|JSON_HEX_APOS );
 
-                            $json_arr_str = htmlspecialchars(json_encode($json_arr, JSON_PRETTY_PRINT), ENT_QUOTES, 'UTF-8');
+                            $json_arr_str = htmlspecialchars(json_encode($json_arr, JSON_PRETTY_PRINT|JSON_INVALID_UTF8_SUBSTITUTE), ENT_QUOTES, 'UTF-8');
 
                             // full data html
                             $full_data_html = "N/A";
@@ -1340,7 +1335,7 @@ class YASBIL_WP_Admin {
                             ];
                         } // --------- end serp loop -------------
 
-                        $js_data = json_encode($arr_datatable);
+                        $js_data = json_encode($arr_datatable, JSON_INVALID_UTF8_SUBSTITUTE);
 
                         if (!$js_data)
                         {
@@ -1470,7 +1465,7 @@ class YASBIL_WP_Admin {
                             ];
                         } // --------- end webnav loop -------------
 
-                        $js_data = json_encode($arr_datatable);
+                        $js_data = json_encode($arr_datatable, JSON_INVALID_UTF8_SUBSTITUTE);
 
                         if (!$js_data)
                         {
@@ -1571,7 +1566,7 @@ class YASBIL_WP_Admin {
                         ];
                     } // --------- end largestring loop -------------
 
-                    $js_data = json_encode($arr_datatable);
+                    $js_data = json_encode($arr_datatable, JSON_INVALID_UTF8_SUBSTITUTE);
 
                     if (!$js_data)
                     {
@@ -2024,7 +2019,7 @@ class YASBIL_WP_Admin {
     public function yasbil_truncate_str($long_str, $thresh = 30)
     {
         if (strlen($long_str) >= $thresh) {
-            return substr($long_str, 0, $thresh-3). "..."; // . substr($long_str, -5);
+            return mb_substr($long_str, 0, $thresh-3, "UTF-8"). "..."; // . substr($long_str, -5);
         }
         else {
             return $long_str;
@@ -2085,7 +2080,10 @@ class YASBIL_WP_Admin {
         //string locator does not have 3 pipe-delimited parts
         // so must be original string
         if(count($split_arr) !== 3)
+        {
             return $p_hash;
+        }
+
 
         // these are strings, but MySQL will parse them to int
         $string_guid = $split_arr[0];
