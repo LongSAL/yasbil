@@ -129,7 +129,7 @@ TODO: add open-graph tags of page? (to identify type of webpage, etc)
 |`mouse_y`| `MouseEvent.pageY` Y (vertical) coordinate in pixels of the event relative to the whole document. This property takes into account any vertical scrolling of the page|
 |`hover_dur`|duration of hover (if `MOUSE_HOVER` event) in milliseconds|
 |--------------|--------------|
-|`dom_path`|sequence of element tags up the DOM hierarchy from the target element to HTML|
+|`dom_path`|sequence of element tags up the DOM hierarchy from the target element to HTML (aka modified xpath)|
 |`target_text`|rendered text of the target element of the event|
 |`target_html`|`innerHTML` of the target element of the event|
 |`target_width`| width of the target (px)|

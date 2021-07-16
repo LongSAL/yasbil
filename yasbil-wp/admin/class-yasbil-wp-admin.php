@@ -813,9 +813,21 @@ class YASBIL_WP_Admin {
                 border-top: 2px dashed #ddd;
                 padding-top: 10px;
             }
-
-
         </style>
+
+        <script>
+            // https://stackoverflow.com/a/31637900
+            function html_encode(e)
+            {
+                const res = JSON.stringify(e, null, 2);
+                console.log(res)
+                return res;
+                /*return e.replace(/[^]/g,function(e)
+                {
+                    return"&#"+e.charCodeAt(0)+";"
+                });*/
+            }
+        </script>
 
         <div class="wrap">
 
@@ -1276,8 +1288,18 @@ class YASBIL_WP_Admin {
                             $json_arr = json_decode($row_serp['scraped_json_arr'], true);
 
                             //TODO: hydrate (hash2string) inner
+                            for($row_i = 0; $row_i < count($json_arr); $row_i++)
+                            {
+                                $inner_t = $this->yasbil_hash2string($json_arr[$row_i]['inner_text']);
+                                $inner_h = $this->yasbil_hash2string($json_arr[$row_i]['inner_html']);
 
-                            $json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT);
+                                $json_arr[$row_i]['inner_text'] = $inner_t;
+                                $json_arr[$row_i]['inner_html'] = $inner_h;
+                            }
+
+                            //$json_arr_str = json_encode($json_arr, JSON_PRETTY_PRINT|JSON_HEX_QUOT|JSON_HEX_APOS );
+
+                            $json_arr_str = htmlspecialchars(json_encode($json_arr, JSON_PRETTY_PRINT), ENT_QUOTES, 'UTF-8');
 
                             // full data html
                             $full_data_html = "N/A";
@@ -1285,10 +1307,10 @@ class YASBIL_WP_Admin {
                             if(count($json_arr) > 0)
                             {
                                 $full_data_html = "
-                                    <button class=\"btn btn-outline-secondary  btn-sm\"
+                                    <button class=\"btn btn-outline-secondary btn-sm\"
                                             data-bs-toggle=\"modal\"
-                                            data-bs-target=\"#modal_serp_full_{$row_s['session_id']}\"
-                                            data-longtext=\"Hello\"
+                                            data-bs-target=\"#modal_serp_{$row_s['session_id']}\"
+                                            data-longtext=\"$json_arr_str\"
                                             type=\"button\">
                                         View Full JSON
                                     </button>
@@ -1346,6 +1368,23 @@ class YASBIL_WP_Admin {
                             </table>
                         </div> <!-- table wrapper -->
 
+                        <!-- modal to display SERP scraped array -->
+                        <div id="modal_serp_<?=$row_s['session_id']?>" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-scrollable modal-xl">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-dark bg-light">
+                                        <pre class="longtext_body" style="font-size: 100%; overflow: initial"></pre>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <script>
                             const data_serp_<?=$row_s['session_id']?> = <?=$js_data?>;
 
@@ -1364,6 +1403,14 @@ class YASBIL_WP_Admin {
                                 setTimeout(function(){
                                     jQuery('#table_serp_<?=$row_s['session_id']?>').DataTable().searchPanes.rebuildPane();
                                 }, 10);
+                            });
+
+                            //show SERP array on button click
+                            jQuery("#modal_serp_<?=$row_s['session_id']?>").on('show.bs.modal', function (e)
+                            {
+                                const triggerLink = jQuery(e.relatedTarget);
+                                const longtext = html_encode(triggerLink.data('longtext'));
+                                jQuery(this).find(".modal-body .longtext_body").text(longtext);
                             });
 
                         </script>
