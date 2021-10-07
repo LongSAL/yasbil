@@ -1,6 +1,8 @@
 # YASBIL: Yet Another Search Behaviour (and) Interaction Logger
 This repository contains the code for the paper [_YASBIL: Yet Another Search Behaviour (and) Interaction Logger_](https://doi.org/10.1145/3404835.3462800) accepted at SIGIR 2021 demo track.
-
+YASBIL is a two-component logging solution for ethically recording a user's browsing activity for Interactive IR user studies. 
+YASBIL comprises a Firefox browser extension and a WordPress plugin. The browser extension logs the browsing activity in the participants' machines. The WordPress plugin collects the logged data into the researcher's data server.
+The logging works on any webpage, without the need to own or have knowledge about the HTML structure of the webpage. YASBIL also offers ethical data transparency and security towards participants, by enabling them to view and obtain copies of the logged data, as well as securely upload the data to the researcher's server over an HTTPS connection.
 
 
 ## Download Links:
