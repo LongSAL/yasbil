@@ -1449,11 +1449,14 @@ class YASBIL_WP_Admin {
                                 //tab
                                 $arr_tab[$row_w['tab_id']],
                                 //url
-                                sprintf(
-                                    "<a href='%s' target='_blank'>%s</a>",
-                                    esc_url($row_w['webnav_url']),
-                                    parse_url($row_w['webnav_url'], PHP_URL_HOST)
-                                ),
+                                strlen($row_w['webnav_url']) > 0 ?
+                                    sprintf(
+                                        "<a href='%s' target='_blank'>%s</a>",
+                                        esc_url($row_w['webnav_url']),
+                                        parse_url($row_w['webnav_url'], PHP_URL_HOST)
+                                    ) :
+                                    ""
+                                ,
                                 // event
                                 str_replace('.', ' ', $row_w['webnav_event']),
                                 // transition
