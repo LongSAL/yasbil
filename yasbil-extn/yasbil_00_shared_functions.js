@@ -99,6 +99,9 @@ function get_search_engine_info(p_url_str)
 // returns if tracking is allowed, checks against a blocklist
 function is_tracking_allowed(p_url_str)
 {
+    if(!p_url_str) //if empty string
+        return true;
+
     let res = true;
     const a = new URL(p_url_str);
 

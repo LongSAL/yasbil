@@ -143,8 +143,9 @@ async function log_start() //tabInfo)
     browser.webNavigation.onCommitted.addListener(listener_webNav_onCommit);
     browser.webNavigation.onDOMContentLoaded.addListener(listener_webNav_onDOMLoad);
 
-    // 2. log tab switches
+    // 2. log tab switches and closes
     browser.tabs.onActivated.addListener(listener_tabs_onActivated);
+    browser.tabs.onRemoved.addListener(listener_tabs_onRemoved);
 
     //3. log YouTube like page visits
     browser.webNavigation.onHistoryStateUpdated.addListener(listener_webNav_onHistUpd);
@@ -192,6 +193,7 @@ async function log_end()
     browser.webNavigation.onDOMContentLoaded.removeListener(listener_webNav_onDOMLoad);
 
     browser.tabs.onActivated.removeListener(listener_tabs_onActivated);
+    browser.tabs.onRemoved.removeListener(listener_tabs_onRemoved);
     browser.webNavigation.onHistoryStateUpdated.removeListener(listener_webNav_onHistUpd);
 
     // start the database update
@@ -340,6 +342,43 @@ function listener_tabs_onActivated(details)
         'tabs.onActivated',
         'YASBIL_TAB_SWITCH',
     );
+
+    log_webnav(
+        details.tabId,
+        //details.frameId,
+        'tabs.onActivated',
+        new Date().getTime(),
+        "",
+        "",
+        "",
+    );
+}
+
+
+//-------------------- log tab close (user closes pre opened tab) -----------------
+// Fired when a tab is closed.
+// event details: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onRemoved
+function listener_tabs_onRemoved(_tabId, _removeInfo)
+{
+    // console.log('tabs.onRemoved');
+
+    log_webnav(
+        _tabId,
+        //details.frameId,
+        'tabs.onRemoved',
+        new Date().getTime(),
+        "",
+        "",
+        "",
+    );
+
+    // cannot log pagevisits because tabId is invalid when it is closed
+    // log_pagevisits(
+    //     _tabId,
+    //     new Date().getTime(), //current timestamp
+    //     'tabs.onRemoved',
+    //     'YASBIL_TAB_CLOSE',
+    // );
 }
 
 

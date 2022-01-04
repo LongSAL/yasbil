@@ -37,15 +37,15 @@ Since all the data is read-only, we decided to include the session, project, and
  
 ## `yasbil_session_pagevisits`
 
-- Page Visits in a Session, similar to `moz_places`
-- captured from three events:
+- Page Visits in a Session, similar to Firefox's history stored in the internal `moz_places` table
+- captured from the following events:
     - [webNavigation.onCompleted](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onCompleted)
         - captures main page visit events, only AFTER the page has completely loaded
     - [tabs.onActivated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated)
         - captures tab switches: user switches back to a webpage-tab previously opened
     - [webNavigation.onHistoryStateUpdated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/onHistoryStateUpdated)
         - to capture webpages like YouTube which do not fire `webNavigation.onCompleted events`
-        - Note: this event may be fired multipe times before page has completely loaded 
+        - Note: this event may be fired multipe times before page has completely loaded
 
 - [`innerText`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText) and [`innerHTML`](https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML) to capture page content, and see if text on page come up in future search query terms
     - YouTube fires `onHistoryStateUpdated` **before** the page has completely loaded; so these properties may contain stale values from previous page  
@@ -71,7 +71,7 @@ Since all the data is read-only, we decided to include the session, project, and
 |`tab_height`||
 |--------------|--------------|
 |`pv_ts`|timestamp of webpage visit|
-|`pv_event`| event that caused the pagevisit: <br/> `YASBIL_SESSION_START`: all the tabs at the start of a recording session <br/>`webNavigation.onCompleted`: page has finished loading <br/>`tabs.onActivated`: user switched to a previously opened tab <br/>`webNavigation.onHistoryStateUpdated`: page updated the browser history record|
+|`pv_event`| event that caused the pagevisit: <br/> `YASBIL_SESSION_START`: all the tabs at the start of a recording session <br/>`webNavigation.onCompleted`: page has finished loading <br/>`tabs.onActivated`: user switched to a previously opened tab <br/>`webNavigation.onHistoryStateUpdated`: page updated the browser history record |
 |`pv_url`||
 |`pv_title`||
 |`pv_hostname`||
@@ -289,7 +289,9 @@ In addition to the properties above, all objects have contain the following comm
 ----------
 
 ## `yasbil_session_webnav`
-- captures [`webnavigation`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events as timing signals 
+- captures [`webnavigation`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation) events, [`tabs.onActivated`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated) events, and [`tabs.onRemoved`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onRemoved) events as timing signals 
+  - [tabs.onActivated](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onActivated) : captures tab switches: user switches back to a webpage-tab previously opened
+  - [tabs.onRemoved](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/onRemoved) : captures tab closes: user closes a webpage-tab previously opened --> user closes a previously opened tab (i.e. information no longer needed)
 - only for `frameId` = 0, i.e. a tab's top-level browsing context, not in a nested `<iframe>`
 
 | **Column** | **Description** |
@@ -307,7 +309,7 @@ In addition to the properties above, all objects have contain the following comm
 |`tab_guid`|unique ID for the browser tab in which event occurs|
 |--------------|--------------|
 |`webnav_ts`|timestamp of event (ms since epoch)|
-|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onHistoryStateUpdated`, `onCompleted`|
+|`webnav_event`|Event type: `onBeforeNavigate`, `onCommitted`,  `onDOMContentLoaded`, `onHistoryStateUpdated`, `onCompleted`, `tabs.onActivated`, `tabs.onRemoved`|
 |`webnav_url`|url of page / frame |
 |`webnav_transition_type`|only for `onCommitted` event: [`transitionType`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionType): The reason for the navigation|
 |`webnav_transition_qual`|only for `onCommitted` event: [`transitionQualifier`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webNavigation/TransitionQualifier). Extra information about the navigation|
