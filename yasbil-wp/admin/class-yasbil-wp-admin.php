@@ -56,7 +56,7 @@ class YASBIL_WP_Admin {
 
 
     /**
-     * Register the REST API endpoints for uploading YASBIL data
+     * Register the REST API endpoints for communicating with YASBIL extn
      *
      * @since    1.0.0
      */
@@ -82,6 +82,14 @@ class YASBIL_WP_Admin {
             'methods'             => WP_REST_Server::READABLE, //GET
             'callback'            => array($this, 'yasbil_rest_util_hash2string'),
             //'permission_callback' => array($this, 'yasbil_rest_util_check_permission'),
+        ]);
+
+        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/view_remote_data
+        // to visualize synced data in extn for a user
+        register_rest_route('yasbil/v2_0_0', 'viz_synced_user_data', [
+            'methods'             => WP_REST_Server::READABLE, //GET
+            'callback'            => array($this, 'yasbil_viz_synced_user_data'),
+            'permission_callback' => array($this, 'yasbil_sync_check_permission'),
         ]);
 
         /*register_rest_route('yasbil/v1', 'sync_sessions', [
@@ -933,6 +941,13 @@ class YASBIL_WP_Admin {
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
+                                id="btn-webnav_<?=$row_s['session_id']?>" data-bs-toggle="tab"
+                                data-bs-target="#tab_webnav_<?=$row_s['session_id']?>"
+                                type="button" role="tab" aria-controls="tab_webnav_<?=$row_s['session_id']?>" aria-selected="false"
+                        >Web and Tab Events</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
                                 id="btn-mouse_<?=$row_s['session_id']?>" data-bs-toggle="tab"
                                 data-bs-target="#tab_mouse_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_mouse_<?=$row_s['session_id']?>" aria-selected="false"
@@ -944,13 +959,6 @@ class YASBIL_WP_Admin {
                                 data-bs-target="#tab_serp_<?=$row_s['session_id']?>"
                                 type="button" role="tab" aria-controls="tab_serp_<?=$row_s['session_id']?>" aria-selected="false"
                         >SERPs</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link"
-                                id="btn-webnav_<?=$row_s['session_id']?>" data-bs-toggle="tab"
-                                data-bs-target="#tab_webnav_<?=$row_s['session_id']?>"
-                                type="button" role="tab" aria-controls="tab_webnav_<?=$row_s['session_id']?>" aria-selected="false"
-                        >Web Events</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link"
@@ -1502,7 +1510,7 @@ class YASBIL_WP_Admin {
                                 searchPanes: {cascadePanes: true, viewTotal: true},
                                 language: {searchPanes: {countFiltered: '{shown} / {total}'}},
                                 dom: 'QPlfritBip', buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
-                                rowGroup: {dataSrc: 2},
+                                rowGroup: {dataSrc: 1}, //group by tab number (because tab.onRemoved does not have URL)
                                 columnDefs: [{searchPanes: {show: false}, targets: [0]},],
                             });
 
@@ -1740,8 +1748,6 @@ class YASBIL_WP_Admin {
 
         try
         {
-            //TODO: check authentication (whether participant is active)
-
             global $wpdb;
 
             $json_body = $request->get_json_params();
@@ -1927,6 +1933,42 @@ class YASBIL_WP_Admin {
 
 
 
+//-------------------------- START: Visualization REST API Functions --------------------------------
+
+    function yasbil_viz_synced_user_data ( $request )
+    {
+        /***
+        JSON body format:
+        {
+            'session_dur': [
+                '2020-01-21': 2,
+                '2021-02-03': 4,
+            ],
+
+        }
+         */
+
+        try
+        {
+
+            global $wpdb;
+            $return_obj = [
+                'session_dur' => []
+            ];
+
+            $response = new WP_REST_Response( $return_obj );
+            $response->set_status( 201 );
+
+            return $response;
+        }
+        catch (Exception $e)
+        {
+            return new rest_ensure_response(WP_Error('wp_exception', $e->getMessage(), array('status' => 400)));
+        }
+    }
+
+
+//-------------------------- END: Visualization REST API Functions --------------------------------
 
 
 

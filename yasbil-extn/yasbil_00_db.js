@@ -21,7 +21,7 @@ db.version(1).stores(DEXIE_DB_TABLES);
 db.open().then(async function (db) {
     await __popl_string_dict();
     update_sync_data_msg();
-    __del_synced_data(); // delete data synced over a week ago
+    __del_synced_data(); // delete data already synced
     console.log('Database opened successfully');
 }).catch (function (err) {
     console.error('DB Open Error occurred');
@@ -632,9 +632,10 @@ async function __del_synced_data(table_name = "", force_delete = false)
 {
     try
     {
-        const __DAY_THRESH = 1; // 7 days...
-        const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
-        const oneWeekAgo = Date.now() - DEL_THRESH;
+        const __DAY_THRESH = 1; // 1 days...
+        // const DEL_THRESH = __DAY_THRESH * 24 * 60 * 60 * 1000 ; // ... in milliseonds
+        const DEL_THRESH = 5 * 60 * 1000; // 5 mins in milliseconds
+        const delTimeAgo = Date.now() - DEL_THRESH;
 
         for (let i = 0; i < ARR_TABLES_SYNC_INFO.length; i++)
         {
@@ -662,7 +663,7 @@ async function __del_synced_data(table_name = "", force_delete = false)
                     .where('sync_ts')
                     // synct_ts = 0 are rows that haven't been synced
                     // [100 ms from epoch] is safe choice
-                    .between(100, oneWeekAgo)
+                    .between(100, delTimeAgo)
                     .delete();
             }
 

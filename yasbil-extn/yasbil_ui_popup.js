@@ -24,7 +24,7 @@ $(document).ready(function()
 
 
 
-    $('a#yasbil_wpl_url').attr("href", yasbil_wp_link);
+    // $('a#yasbil_wpl_url').attr("href", yasbil_wp_link);
 
     $('#logToggle').change(function() //yasbil toggle change label
     {
