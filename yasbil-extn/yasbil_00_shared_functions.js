@@ -318,9 +318,12 @@ function yasbil_milli_to_str(ms)
         if(ms === 0)
             return "x";
 
-        return new Date(ms)
+        return new Date(ms - new Date().getTimezoneOffset() * 60 * 1000)
             .toISOString()
-            .replace('T', ' ');
+            .replace('T', ' ')
+            .replace('Z', '')
+            //.slice(0, -4) //remove milliseconds
+            ;
     }
     catch (err)
     {

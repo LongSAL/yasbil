@@ -84,7 +84,7 @@ class YASBIL_WP_Admin {
             //'permission_callback' => array($this, 'yasbil_rest_util_check_permission'),
         ]);
 
-        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/view_remote_data
+        //GET:  https://volt.ischool.utexas.edu/wp/wp-json/yasbil/v2_0_0/viz_synced_user_data
         // to visualize synced data in extn for a user
         register_rest_route('yasbil/v2_0_0', 'viz_synced_user_data', [
             'methods'             => WP_REST_Server::READABLE, //GET
@@ -1940,21 +1940,116 @@ class YASBIL_WP_Admin {
         /***
         JSON body format:
         {
-            'session_dur': [
-                '2020-01-21': 2,
-                '2021-02-03': 4,
+            'browse_heatmap_data': [
+                1623619332.001: 1.1102,
+                1623619548.001: 4.2072,
             ],
+            'browse_heatmap_st': <first timestamp of heatmap_data>
+            'browse_heatmap_end': <last timestamp of heatmap_data>
 
         }
          */
 
+        $return_obj = [
+            'browse_heatmap_data' => [],
+            'browse_heatmap_st'=> time() * 1000, // current time in milliseconds
+            'browse_heatmap_end' => 0,
+        ];
+
         try
         {
-
             global $wpdb;
-            $return_obj = [
-                'session_dur' => []
-            ];
+
+            $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
+            $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+            $tbl_mouse = $wpdb->prefix . "yasbil_session_mouse";
+            $tbl_serp = $wpdb->prefix . "yasbil_session_serp";
+            $tbl_webnav = $wpdb->prefix . "yasbil_session_webnav";
+
+
+            $current_user = wp_get_current_user();
+            $user_id = $current_user->ID;
+
+            // --------- browsing heatmap ---------------------
+
+            /*
+             * does not execute for some reason
+             * $sql_browse_heatmap_data = "
+                SELECT
+                    b.session_id,
+                    FROM_UNIXTIME(
+                        a.webnav_ts/1000
+                        - TIME_TO_SEC(TIMEDIFF(NOW(), UTC_TIMESTAMP)) -- from_unix_time returns in current timezone, while ts are in UTC timezone 
+                        + b.session_tz_offset*60, 
+                    '%Y-%m-%d') ts_date,
+                    round(a.webnav_ts/1000) ts_sec,
+                    ROUND((MAX(a.webnav_ts) - MIN(a.webnav_ts)) / (1000 * 60), 1) session_dur_minutes
+                FROM $tbl_webnav a
+                   , $tbl_sessions b
+                WHERE 1=1
+                AND a.session_guid = b.session_guid
+                AND a.user_id = %s
+                GROUP BY 1, 2
+                ORDER BY a.webnav_ts
+            ";*/
+
+            $sql_browse_heatmap_data = "
+                SELECT b.session_id,
+                    round(a.m_ts/1000) ts_sec,
+                    ROUND((MAX(a.m_ts) - MIN(a.m_ts)) / (1000 * 60)) session_dur_minutes
+                FROM $tbl_mouse a
+                   , $tbl_sessions b
+                WHERE 1=1
+                AND a.session_guid = b.session_guid
+                AND a.user_id = %s
+                group by 1
+            ";
+
+
+            //$wpdb->show_errors();
+            $db_res_browse_heatmap_data = $wpdb->get_results(
+                $wpdb->prepare($sql_browse_heatmap_data, $user_id),
+                ARRAY_A
+            );
+
+
+            /*$return_obj['num_rows'] = $wpdb->num_rows;
+            $return_obj['userid'] = $user_id;
+            $return_obj['raw'] = $db_res_browse_heatmap_data;
+            $return_obj['sql'] = $wpdb->last_query;*/
+
+
+            foreach ($db_res_browse_heatmap_data as $row)
+            {
+                $return_obj['browse_heatmap_data'][$row['ts_sec']] = floatval($row['session_dur_minutes']);
+
+                if($row['ts_sec'] < $return_obj['browse_heatmap_st'])
+                    $return_obj['browse_heatmap_st'] = $row['ts_sec']; //
+
+                if($row['ts_sec'] > $return_obj['browse_heatmap_end'])
+                    $return_obj['browse_heatmap_end'] = $row['ts_sec'];
+            }
+
+            /*****
+             * SELECT
+            FROM_UNIXTIME(
+            a.webnav_ts/1000
+            - TIME_TO_SEC(TIMEDIFF(NOW(), UTC_TIMESTAMP)) #from_unix_time returns in current timezone, while ts are in UTC timezone
+            + b.session_tz_offset*60,
+            '%Y-%m-%d %H:%i:%s') ts
+
+            FROM wplongsal_yasbil_session_webnav a
+            , wplongsal_yasbil_sessions b
+            WHERE 1=1
+            AND a.session_guid = b.session_guid
+            AND a.user_id = 2
+            ORDER BY webnav_ts desc
+            ;
+             */
+
+
+
+
 
             $response = new WP_REST_Response( $return_obj );
             $response->set_status( 201 );
