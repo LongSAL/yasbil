@@ -436,13 +436,13 @@ function compress_html_string(p_html_str)
         result = result.replace(/^\s+|\r\n|\n|\r|(>)\s+(<)|\s+$/gm, '$1$2');
         result = result.replaceAll("  ", " ").replaceAll("  ", " ");
 
-        if(p_html_str.length/1000 > 100)
+        /*if(p_html_str.length/1000 > 100)
         {
             console.log(
               'orig: ', p_html_str.length/1000, 'k ',
               'comp: ', result.length/1000, 'k ',
             );
-        }
+        }*/
 
         return result;
     }
