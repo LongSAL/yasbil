@@ -3,7 +3,7 @@
   "name": "YASBIL",
   "description": "YASBIL: Yet Another Search Behaviour (and) Interaction Logger",
   "homepage_url": "https://github.com/yasbil/yasbil",
-  "version": "2.0.4",
+  "version": "2.1.0",
 
   "background": {
     "page": "yasbil_background_page.html"

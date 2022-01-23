@@ -10,7 +10,6 @@
 
 $(document).ready(async function()
 {
-
     const remote_resp = await get_remote_data_viz()
 
     if(!remote_resp.ok)
@@ -23,21 +22,10 @@ $(document).ready(async function()
 
     const remote_data = remote_resp.resp_body_json;
 
-    /*const browse_heatmap_data = {
-        1623619332.001: 1.1102,
-        1623619548.001: 4.2072,
-        1623620465.001: 7.4417,
-        1623969224.001: 295.6825,
-        1623983026.001: 143.1997,
-        1623989800.001: 61.5686,
-        1627333723.001: 0.4293,
-        1627333850.001: 11.1435,
-        1627334008.001: 7.3654,
-        1627334945.001: 12.1819,
 
-    };*/
+     // -------------------- overall browsing activity heatmap -----------
 
-    $('#remote_data_disp').text(JSON.stringify(remote_data, null, 4));
+    //$('#remote_data_disp').text(JSON.stringify(remote_data, null, 4));
 
     //console.log(remote_data);
     //console.log(remote_data.sql);
@@ -60,45 +48,40 @@ $(document).ready(async function()
         domainLabelFormat: "%B %Y",
         highlight: "now",
 
-        /*onClick: function(date, nb) {
-            $("#onClick-placeholder").html("You just clicked <br/>on <b>" +
-                date + "</b> <br/>with <b>" +
-                (nb === null ? "unknown" : nb) + "</b> items"
-            );
-        },*/
-
 
         // Date() takes in milliseconds, while
         // CalHeatMap() data takes in seconds
         start: new Date(remote_data['browse_heatmap_st'] * 1000),
         minDate: new Date(remote_data['browse_heatmap_end'] * 1000),
         maxDate: new Date(remote_data['browse_heatmap_end'] * 1000),
-
     });
 
 
-    //await few seconds to load in-memory string cache
-    // await sleep(1000);
+    // ------------ pagevisits datatable -----------------
+    //console.log(remote_data['pv_data']);
 
+    $('#yasbil_session_pagevisits').dataTable({
+        data: remote_data['pv_data'],
+        pageLength: 25, autoWidth: false,
+        //searchBuilder: true,
+        searchBuilder: false,
+        searchPanes: {cascadePanes: true, viewTotal: true},
+        language: {searchPanes: {countFiltered: '{shown} / {total}'}},
+        dom: 'Plfritip',
+        //dom: 'QPlfritBip',
+        //buttons: ['copy', 'csv', 'excel'], //'pdf', 'print'],
+        columnDefs: [
+            {targets: [4], searchPanes: {header: 'Transition'},},
+            //{targets: [0], searchPanes: {show: false},}
+        ],
+        order: [[0, 'desc'], [1, 'desc']],
+    });
 }); // -- document.ready end ---
 
 
-
+// - get pre-processed viz data
 async function get_remote_data_viz()
 {
-    /**
-     - get pre-processed viz data
-
-     -------------------------
-       Response JSON Format:
-     -------------------------
-     {
-        browse_heatmap_data: [
-            1623619332.001: 1.1102,
-            1623619548.001: 4.2072,
-        ],
-     }
-     */
 
     const res_remote_data = {
         ok: true,
@@ -111,8 +94,6 @@ async function get_remote_data_viz()
 
     try
     {
-
-
         // --------- STEP 1: setting up GET request ---------
         const settings = yasbil_get_settings();
         const basic_auth = btoa(settings.USER + ':' + settings.PASS);
@@ -158,7 +139,6 @@ async function get_remote_data_viz()
                 <samp>${json_resp}</samp>
                 `
             );
-
 
 
         if(!json_resp)

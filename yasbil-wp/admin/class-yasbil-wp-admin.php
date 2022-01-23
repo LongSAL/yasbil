@@ -1954,6 +1954,7 @@ class YASBIL_WP_Admin {
             'browse_heatmap_data' => [],
             'browse_heatmap_st'=> time() * 1000, // current time in milliseconds
             'browse_heatmap_end' => 0,
+            'pv_data' => [],
         ];
 
         try
@@ -1993,16 +1994,28 @@ class YASBIL_WP_Admin {
                 ORDER BY a.webnav_ts
             ";*/
 
-            $sql_browse_heatmap_data = "
-                SELECT b.session_id,
+            // session_end_ts is more reliable than m_ts
+            /*"
+            SELECT a.session_guid,
                     round(a.m_ts/1000) ts_sec,
                     ROUND((MAX(a.m_ts) - MIN(a.m_ts)) / (1000 * 60)) session_dur_minutes
                 FROM $tbl_mouse a
-                   , $tbl_sessions b
+                WHERE 1=1
+                AND a.user_id = %s
+                group by 1
+            ";*/
+
+            $sql_browse_heatmap_data = "
+                SELECT a.session_guid,
+                    round(a.session_start_ts/1000) ts_sec,
+                    ROUND((IFNULL(MAX(a.session_end_ts),MAX(b.pv_ts))  - MIN(a.session_start_ts)) / (1000 * 60)) session_dur_minutes
+                FROM $tbl_sessions a
+                   , $tbl_pagevisits b
                 WHERE 1=1
                 AND a.session_guid = b.session_guid
                 AND a.user_id = %s
                 group by 1
+                ORDER BY 2 desc
             ";
 
 
@@ -2030,22 +2043,106 @@ class YASBIL_WP_Admin {
                     $return_obj['browse_heatmap_end'] = $row['ts_sec'];
             }
 
-            /*****
-             * SELECT
-            FROM_UNIXTIME(
-            a.webnav_ts/1000
-            - TIME_TO_SEC(TIMEDIFF(NOW(), UTC_TIMESTAMP)) #from_unix_time returns in current timezone, while ts are in UTC timezone
-            + b.session_tz_offset*60,
-            '%Y-%m-%d %H:%i:%s') ts
 
-            FROM wplongsal_yasbil_session_webnav a
-            , wplongsal_yasbil_sessions b
-            WHERE 1=1
-            AND a.session_guid = b.session_guid
-            AND a.user_id = 2
-            ORDER BY webnav_ts desc
-            ;
-             */
+
+            // ------- getting TZ offset for each session ------
+
+            $db_res_tz_off = $wpdb->get_results(
+                $wpdb->prepare("
+                    select session_guid, session_tz_offset
+                    from $tbl_sessions a
+                    where a.user_id = %s
+                ", $user_id),
+                ARRAY_A
+            );
+
+            $arr_tz_off = [];
+            foreach ($db_res_tz_off as $row_tz)
+            {
+                $arr_tz_off[$row_tz['session_guid']] = $row_tz['session_tz_offset'];
+            }
+
+
+            // --------- pagevisits data ---------------------
+
+            //$tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+
+            $sql_select_pv = "
+                SELECT *
+                FROM $tbl_pagevisits pv
+                WHERE 1=1
+                and pv.user_id = %s
+                -- and pv.pv_event = 'webNavigation.onCompleted'
+                and pv.pv_transition_type not like '%TAB%'
+                ORDER BY pv.pv_ts asc
+            ";
+
+            $db_res_pv =  $wpdb->get_results(
+                $wpdb->prepare($sql_select_pv, $user_id),
+                ARRAY_A
+            );
+
+            // for displaying window and tab numbers as 1,2...
+            $win_num = 1; $tab_num = 1;
+            $arr_win = array(); $arr_tab = array();
+
+
+            foreach ($db_res_pv as $row_pv)
+            {
+                if(!array_key_exists($row_pv['win_id'], $arr_win)) {
+                    $arr_win[$row_pv['win_id']] = $win_num++;
+                }
+
+                if(!array_key_exists($row_pv['tab_id'], $arr_tab)) {
+                    $arr_tab[$row_pv['tab_id']] = $tab_num++;
+                }
+
+                $pv_ts = $this->yasbil_milli_to_str(
+                    $row_pv['pv_ts'], $arr_tz_off[$row_pv['session_guid']]
+                );
+
+                // yyyy-mm-dd HH:mi:ss
+                $pv_dt = substr($pv_ts,0,10);
+                $pv_time = substr($pv_ts,11,5);
+
+                // add data to display array
+                $return_obj['pv_data'][] = [
+                    // date
+                    $pv_dt,
+                    //time
+                    $pv_time,
+                    //window | tab
+                    sprintf(
+                        "%s | %s",
+                        $arr_win[$row_pv['win_id']],
+                        $arr_tab[$row_pv['tab_id']]
+                    ),
+                    //url
+                    sprintf(
+                        "<a href='%s' target='_blank'>%s</a>",
+                        esc_url($row_pv['pv_url']),
+                        $row_pv['pv_hostname']
+                    ),
+                    //transition
+                    str_ireplace('YASBIL_', '', $row_pv['pv_transition_type']),
+                    // page title
+                    str_replace(
+                        ['.',  '+',  '?',  '/',  '='],
+                        ['. ', '+ ', '? ', '/ ', '= '],
+                        $row_pv['pv_title']
+                    ),
+
+                    // search engine, search query
+                    "{$row_pv['pv_search_engine']} {$row_pv['pv_search_query']}"
+
+                    // nav event
+                    //str_replace('.', ' ', $row_pv['pv_event']),
+                    //text_size
+                    //$this->yasbil_strsize($this->yasbil_hash2string($row_pv['pv_page_text'])),
+                    //html size
+                    //$this->yasbil_strsize($this->yasbil_hash2string($row_pv['pv_page_html'])),
+                ];
+            } // --------- end pagevisit loop -------------
 
 
 

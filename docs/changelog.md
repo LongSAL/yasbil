@@ -1,6 +1,13 @@
 
 # Changelog
 
+### 2.1.0
+Changes before starting LongSAL study
+- added remote data visualization
+- added recording of tabs closing (`tabs.onRemoved`)
+- added image assets for datatables (sorting triangles)
+- WP: added new API endpoint for remote data visualization
+
 ### 2.0.3
 - fix: SERP scrape JSON array needed to be stringified to sync
 - WP: 
