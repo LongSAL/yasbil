@@ -6,7 +6,6 @@ YASBIL comprises a Firefox browser extension and a WordPress plugin. The browser
 The logging works on any webpage, without the need to own or have knowledge about the HTML structure of the webpage. YASBIL also offers ethical data transparency and security towards participants, by enabling them to view and obtain copies of the logged data, as well as securely upload the data to the researcher's server over an HTTPS connection.
 
 
-
 ## Download Links:
 - For participants: [YASBIL Firefox Browser Extension v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.1.0.xpi)
 - For researchers: [YASBIL WordPress plugin v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.1.0.zip) 

@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use YASBIL in your research, please cite YASBIL as below."
+authors:
+- family-names: "Bhattacharya"
+  given-names: "Nilavra"
+  orcid: "https://orcid.org/0000-0001-7864-7726"
+- family-names: "Gwizdka"
+  given-names: "Jacek"
+  orcid: "https://orcid.org/0000-0003-2273-3996"
+title: "YASBIL: Yet Another Search Behaviour (and) Interaction Logger"
+version: 2.0.3
+doi: 10.1145/3404835.3462800
+date-released: 2021-07-11
+url: "https://github.com/yasbil/yasbil"
