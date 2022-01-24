@@ -14,14 +14,17 @@ let portPopupToBG = browser.runtime.connect({name:"port-ba-popup-to-bg"});
 
 $(document).ready(function()
 {
-    $('#yasbil_version').html(browser.runtime.getManifest().version);
-
-    refreshPopupElements();
-
     const yasbil_settings = yasbil_get_settings();
     const yasbil_wp_link = yasbil_settings.URL + '/wp-admin/admin.php?page=yasbil_wp';
 
-    $('a#yasbil_wpl_url').attr("href", yasbil_wp_link);
+    $('#yasbil_version').html(browser.runtime.getManifest().version);
+    $('#yasbil_username').html(yasbil_settings.USER);
+
+    refreshPopupElements();
+
+
+
+    // $('a#yasbil_wpl_url').attr("href", yasbil_wp_link);
 
     $('#logToggle').change(function() //yasbil toggle change label
     {

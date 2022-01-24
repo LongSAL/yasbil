@@ -1,0 +1,216 @@
+<!--
+ * Original Author: Nilavra Bhattacharya
+ * Author URL: https://nilavra.in
+ * Date: 2021-05-03
+ * Time: 10:23 AM CDT
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YASBIL Remote Data</title>
+
+    <link rel="stylesheet" href="css/bootstrap.v5.0.0-beta1.css">
+    <link rel="stylesheet" href="css/cal-heatmap.css">
+
+    <link rel="stylesheet" href="css/jquery.dataTables.min.css">
+
+    <!-- datatables searchbuilder-->
+    <link rel="stylesheet" href="css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="css/searchBuilder.dataTables.min.css">
+    <link rel="stylesheet" href="css/dataTables.dateTime.min.css">
+    <!-- datatables searchpane-->
+    <link rel="stylesheet" href="css/searchPanes.dataTables.min.css">
+    <link rel="stylesheet" href="css/select.dataTables.min.css">
+    <!-- datatables rowgroup-->
+    <link rel="stylesheet" href="css/rowGroup.dataTables.min.css">
+
+
+    <script src="js/jquery-3.5.1.js"></script>
+    <script src="js/bootstrap.bundle.v5.0.0-beta1.js"></script>
+
+    <script src="js/jquery.dataTables.min.js"></script>
+    <!-- datatables searchbuilder-->
+    <script src="js/dataTables.searchBuilder.min.js"></script>
+    <script src="js/dataTables.dateTime.min.js"></script>
+    <!-- datatables searchpane-->
+    <script src="js/dataTables.searchPanes.min.js"></script>
+    <script src="js/dataTables.select.min.js"></script>
+    <!-- datatables rowgroup-->
+    <script src="js/dataTables.rowGroup.min.js"></script>
+
+    <!-- datatables buttons-->
+    <script src="js/dataTables.buttons.min.js"></script>
+
+
+
+    <script src="js/d3.v3.min.js"></script>
+    <script src="js/cal-heatmap.min.js"></script>
+
+    <script src="yasbil_00_shared_constants.js"></script>
+    <script src="yasbil_00_shared_functions.js"></script>
+    <script src="yasbil_ui_view_remote_data.js"></script>
+    <style>
+        span.tbl_size{font-size: 70%;}
+
+        .graph-label {font-size: 14px;}
+        .subdomain-text {
+            font-size: 12px;
+            fill: #999;
+        }
+
+        #ajaxLoader {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            z-index: 1;
+            width: 120px;
+            height: 120px;
+            margin: -76px 0 0 -76px;
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            -webkit-animation: spin 2s linear infinite;
+            animation: spin 2s linear infinite;
+            display: none;
+        }
+
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #ajax_error {display: none}
+
+        div.dtsp-panesContainer {
+            border: 2px solid #ddd;
+            margin: 0px 0px 10px;
+            padding: 15px;
+            font-size: 90%;
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria select.dtsb-dropDown,
+        div.dtsb-searchBuilder div.dtsb-group div.dtsb-criteria input.dtsb-input {
+            min-width: 200px;
+        }
+
+        div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane div.dtsp-topRow div.dtsp-searchCont input.dtsp-search {
+            border: 1px solid #aaa !important;
+            border-radius: 4px !important;
+            padding-left: 5px !important;
+            margin-bottom: 3px;
+            margin-left: 0px;
+            background: white;
+        }
+
+        div.dtsp-panesContainer div.dtsp-searchPanes div.dtsp-searchPane {
+            flex-grow: 1;
+            flex-shrink: 0;
+            font-size: .9em;
+            /* margin-top: 5px; */
+            /* border: 1px dashed#ccc; */
+            /* border-top: 1px solid #777; */
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ajaxLoader"></div>
+
+
+<main class="container-fluid p-4">
+    <h1 class="mx-auto text-center">
+        YASBIL Remote Data (Synced to Server)
+    </h1>
+
+    <hr/>
+
+    <div id="ajax_error" class="mt-4 p-4">
+        <div class="alert alert-danger" role="alert"></div>
+    </div>
+
+    <div id="ajax_success">
+
+        <p class="h3 my-4">
+            Overall Browsing Activity
+        </p>
+
+        <div class="btn-group btn-group-sm" role="group" aria-label="Basic example">
+            <button type="button" id="browse_heatmap_prev" class="btn btn-outline-secondary">Previous</button>
+            <button type="button" id="browse_heatmap_next" class="btn btn-outline-secondary">Next</button>
+        </div>
+        <br/>
+        <br/>
+        <div id="browse_heatmap"></div>
+
+        <hr/>
+
+        <p class="h3 mt-4 mb-0">
+            Browsing History
+        </p>
+        <p class="mt-0 mb-3 small">
+            Use the pane below to search and filter data.
+            <br/>
+            To sort multiple columns, shift click on the second, third columns (this adds the clicked column as a secondary, tertiary etc ordering column).
+        </p>
+        <table id="yasbil_session_pagevisits" class="display" style="width:100%">
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Window | Tab</th>
+                <th>URL</th>
+                <th>
+                    <a target="_blank"
+                       href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/TransitionType"
+                    >Transition</a>
+                </th>
+                <th>Page Title</th>
+                <th>Search Engine Search Query</th>
+            </tr>
+            </thead>
+        </table>
+
+
+        <!--hr/>
+
+
+
+        <div class="card">
+            <div class="card-header h4">Raw Remote Data Returned</div>
+            <div class="card-body">
+                <pre id="remote_data_disp"></pre>
+            </div>
+        </div>
+
+        <p class="h4 mt-5">
+
+        </p>
+
+        <div class="row">
+            <div class="col">
+
+            </div>
+        </div-->
+
+
+
+    </div>
+
+</main>
+
+
+
+
+
+</body>
+</html>

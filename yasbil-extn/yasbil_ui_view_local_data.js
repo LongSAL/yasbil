@@ -534,15 +534,25 @@ $(document).ready(async function()
                         return yasbil_milli_to_str(row['webnav_ts'])
                     }
                 },
+                {//tab id
+                    data: null, render: function (data, type, row) {
+                        return row['tab_id'] + '<br/>' + row['tab_guid'].substr(0, 6)+'...'
+                    }
+                },
                 {//url
                     data: null, render: function (data, type, row) {
-                        return `
-                        <small>
-                        <a href='${row['webnav_url']}' target='_blank'>
-                            ${new URL(row['webnav_url']).hostname.substr(0, 30)}
-                        </a>
-                        </small>
-                        `;
+                        if(row['webnav_url']){
+                            return `
+                            <small>
+                            <a href='${row['webnav_url']}' target='_blank'>
+                                ${new URL(row['webnav_url']).hostname.substr(0, 30)}
+                            </a>
+                            </small>
+                            `;
+                        }
+                        else {
+                            return ``;
+                        }
                     }
                 },
 

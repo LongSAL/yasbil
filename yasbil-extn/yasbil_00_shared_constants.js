@@ -106,6 +106,7 @@ const ARR_URL_BLOCKLIST = [
 //------------ sync constants -------------
 const API_NAMESPACE = `/wp-json/yasbil/v2_0_0`;
 const CHECK_CONNECTION_ENDPOINT = '/check_connection';
+const REMOTE_DATA_VIZ_ENDPOINT = '/viz_synced_user_data';
 
 
 //----- logging constants / thresholds -------------

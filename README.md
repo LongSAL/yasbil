@@ -1,13 +1,15 @@
 # YASBIL: Yet Another Search Behaviour (and) Interaction Logger
 This repository contains the code for the paper [_YASBIL: Yet Another Search Behaviour (and) Interaction Logger_](https://doi.org/10.1145/3404835.3462800) accepted at SIGIR 2021 demo track.
+
 YASBIL is a two-component logging solution for ethically recording a user's browsing activity for Interactive IR user studies. 
 YASBIL comprises a Firefox browser extension and a WordPress plugin. The browser extension logs the browsing activity in the participants' machines. The WordPress plugin collects the logged data into the researcher's data server.
 The logging works on any webpage, without the need to own or have knowledge about the HTML structure of the webpage. YASBIL also offers ethical data transparency and security towards participants, by enabling them to view and obtain copies of the logged data, as well as securely upload the data to the researcher's server over an HTTPS connection.
 
 
 ## Download Links:
-* [YASBIL Browser Extension](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.0.3.xpi) (for user) tested with Firefox
-* [YASBIL WordPress plugin](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.0.3.zip) (for researcher) to be installed in central data repository
+- For participants: [YASBIL Firefox Browser Extension v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.1.0.xpi)
+- For researchers: [YASBIL WordPress plugin v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.1.0.zip) 
+  - to be installed in central data repository
 
 ## Videos:
 
@@ -18,12 +20,12 @@ The logging works on any webpage, without the need to own or have knowledge abou
 
 
 ## Instructions
-* [Instructions for Participants](./docs/instructions-participant.md)
-* [Instructions for Researchers](./docs/instructions-researcher.md)
+- [Instructions for Participants](./docs/instructions-participant.md)
+- [Instructions for Researchers](./docs/instructions-researcher.md)
 
 
 ## Data Dictionary
-A complete list of all the database tables used by YASBIL [can be found here](./docs/data-dictionary.md).
+- [Click here to see the list of all database tables used by YASBIL](./docs/data-dictionary.md)
 
 
 
