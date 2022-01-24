@@ -7,8 +7,8 @@ The logging works on any webpage, without the need to own or have knowledge abou
 
 
 ## Download Links:
-- For participants: [YASBIL Firefox Browser Extension v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.1.0.xpi)
-- For researchers: [YASBIL WordPress plugin v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.1.0.zip) 
+- [Firefox Extension v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-extn-2.1.0.xpi) (for participants)
+- [WordPress plugin v2.1.0](https://github.com/yasbil/yasbil/raw/main/yasbil-wp-2.1.0.zip) (for researchers) 
   - to be installed in central data repository
 
 ## Videos:
