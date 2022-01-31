@@ -2008,7 +2008,14 @@ class YASBIL_WP_Admin {
             $sql_browse_heatmap_data = "
                 SELECT a.session_guid,
                     round(a.session_start_ts/1000) ts_sec,
-                    ROUND((IFNULL(MAX(a.session_end_ts),MAX(b.pv_ts))  - MIN(a.session_start_ts)) / (1000 * 60)) session_dur_minutes
+                    ROUND(
+                        (
+                            if(ifnull(MAX(a.session_end_ts),0) < MIN(a.session_start_ts), MAX(b.pv_ts), MAX(a.session_end_ts))                        
+                            - MIN(a.session_start_ts)
+                        ) 
+                        / 
+                        (1000 * 60)
+                    ) session_dur_minutes
                 FROM $tbl_sessions a
                    , $tbl_pagevisits b
                 WHERE 1=1
