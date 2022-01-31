@@ -16,7 +16,7 @@
  * Plugin Name:       YABIL WP
  * Plugin URI:        https://github.com/yasbil/yasbil
  * Description:       YASBIL: Yet Another Search Behaviour (and) Interaction Logger
- * Version:           2.1.0
+ * Version:           2.1.1
  * Author:            Nilavra Bhattacharya
  * Author URI:        https://nilavra.in
  * License:           GPL-2.0+
@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
  *
  * Changelogs in docs/changelog-wp.md
  */
-define( 'YASBIL_WP_VERSION', '2.1.0' );
+define( 'YASBIL_WP_VERSION', '2.1.1' );
 //define( 'PLUGIN_NAME_VERSION', '1.0.0' );
 
 global $yasbil_wp_db_version;
