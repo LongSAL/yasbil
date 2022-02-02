@@ -631,7 +631,7 @@ class YASBIL_WP_Admin {
 
                     <script>
                         jQuery('#table_project_<?=$project_name?>').DataTable({
-                            pageLength: 100
+                            pageLength: 100, order: [[1, 'asc']]
                         });
                     </script>
 
@@ -763,6 +763,11 @@ class YASBIL_WP_Admin {
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.html5.min.js"></script>
         <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.print.min.js"></script>
 
+        <!-- cal heatmap -->
+        <script type="text/javascript" src="//d3js.org/d3.v3.min.js"></script>
+        <script type="text/javascript" src="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.min.js"></script>
+        <link rel="stylesheet" href="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.css" />
+
         <style>
             /*table caption {*/
             /*    font-size: 18px;*/
@@ -821,6 +826,19 @@ class YASBIL_WP_Admin {
                 border-top: 2px dashed #ddd;
                 padding-top: 10px;
             }
+
+            span.tbl_size{font-size: 70%;}
+
+            .graph-label {font-size: 14px;}
+            .subdomain-text {
+                font-size: 12px;
+                fill: #999;
+            }
+
+            .browse-heatmap {
+                background: white;
+                padding: 10px;
+            }
         </style>
 
         <script>
@@ -871,9 +889,109 @@ class YASBIL_WP_Admin {
                 We are always ready to help mitigate your concerns.
             </p>
 <?php   }
-?>
 
-            <p>All timestamps are in participant's local time.</p>
+    // ------------ START: calendar heatmap ----------------
+    $return_obj = [
+        'browse_heatmap_data' => [],
+        'browse_heatmap_st'=> time() * 1000, // current time in milliseconds
+        'browse_heatmap_end' => 0,
+        //'pv_data' => [],
+    ];
+
+    $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
+    $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
+
+    $sql_browse_heatmap_data = "
+        SELECT a.session_guid,
+            round(a.session_start_ts/1000) ts_sec,
+            ROUND(
+                (
+                    if(ifnull(MAX(a.session_end_ts),0) < MIN(a.session_start_ts), MAX(b.pv_ts), MAX(a.session_end_ts))                        
+                    - MIN(a.session_start_ts)
+                ) 
+                / 
+                (1000 * 60)
+            ) session_dur_minutes
+        FROM $tbl_sessions a
+           , $tbl_pagevisits b
+        WHERE 1=1
+        AND a.session_guid = b.session_guid
+        AND a.user_id = %s
+        group by 1
+        ORDER BY 2 desc
+    ";
+
+
+    //$wpdb->show_errors();
+    $db_res_browse_heatmap_data = $wpdb->get_results(
+        $wpdb->prepare($sql_browse_heatmap_data, $user_id),
+        ARRAY_A
+    );
+
+
+    foreach ($db_res_browse_heatmap_data as $row)
+    {
+        $return_obj['browse_heatmap_data'][$row['ts_sec']] = floatval($row['session_dur_minutes']);
+
+        if($row['ts_sec'] < $return_obj['browse_heatmap_st'])
+            $return_obj['browse_heatmap_st'] = $row['ts_sec']; //
+
+        if($row['ts_sec'] > $return_obj['browse_heatmap_end'])
+            $return_obj['browse_heatmap_end'] = $row['ts_sec'];
+    }
+
+    $js_data_heatmap = json_encode($return_obj, JSON_INVALID_UTF8_SUBSTITUTE);
+
+    // ------------ END: calendar heatmap ----------------
+
+
+?>
+            <p class="h5 my-4">
+                Overall Browsing Activity:
+                <samp><?=$user_name?></samp>
+            </p>
+
+            <div class="btn-group btn-group-sm" role="group" aria-label="Basic example">
+                <button type="button" id="browse_heatmap_prev" class="btn btn-outline-secondary">Previous</button>
+                <button type="button" id="browse_heatmap_next" class="btn btn-outline-secondary">Next</button>
+            </div>
+            <br/>
+            <br/>
+            <div id="browse_heatmap_<?=$user_id?>" class="browse-heatmap"></div>
+
+            <script>
+                const heatmap_data_<?=$user_id?> = <?=$js_data_heatmap?>
+
+                let browse_heatmap_<?=$user_id?> = new CalHeatMap();
+
+                browse_heatmap_<?=$user_id?>.init({
+                    itemSelector: document.querySelector('#browse_heatmap_<?=$user_id?>'),
+                    domain: "month",
+                    subDomain: "x_day",
+                    range: 3,
+                    domainGutter: 20,
+                    data: heatmap_data_<?=$user_id?>['browse_heatmap_data'],
+                    previousSelector: "#browse_heatmap_prev",
+                    nextSelector: "#browse_heatmap_next",
+                    cellSize: 30,
+                    tooltip: true,
+                    itemName: "minute",
+                    subDomainTextFormat: "%d",
+                    domainLabelFormat: "%B %Y",
+                    highlight: "now",
+
+
+                    // Date() takes in milliseconds, while
+                    // CalHeatMap() data takes in seconds
+                    start: new Date(heatmap_data_<?=$user_id?>['browse_heatmap_st'] * 1000),
+                    minDate: new Date(heatmap_data_<?=$user_id?>['browse_heatmap_end'] * 1000),
+                    maxDate: new Date(heatmap_data_<?=$user_id?>['browse_heatmap_end'] * 1000),
+                });
+            </script>
+
+            <p class="mt-4">All timestamps are in participant's local time.</p>
+
+
 <?php
         $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
 

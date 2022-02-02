@@ -3,6 +3,7 @@
 
 ### 2.1.1
 - fixed SQL query for API endpoint of browsing heatmap data, when `session_end_ts` is not captured
+- added calendar heatmap to individual user pages
 
 ### 2.1.0
 Changes before starting LongSAL study
