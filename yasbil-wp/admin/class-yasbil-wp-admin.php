@@ -450,7 +450,7 @@ class YASBIL_WP_Admin {
         <div class="wrap">
             <h1>YASBIL Data Collection Summary</h1>
 
-            <p>All timestamps are in participant's local time.</p>
+            <p>All timestamps are in database server's timezone.</p>
 
             <style>
                 .badge-enabled {
@@ -571,8 +571,7 @@ class YASBIL_WP_Admin {
                                 , COUNT(DISTINCT pv.hist_ts) pv_ct
                                 , AVG(distinct(IF(s.session_end_ts<>0, s.session_end_ts, s.session_start_ts) - s.session_start_ts)) avg_session_dur_ms
                                 , round(COUNT(DISTINCT pv.hist_ts) / COUNT(DISTINCT s.session_guid), 1) pv_per_session
-                                , MAX(pv.pv_ts) last_activity
-                                , s.session_tz_offset
+                                , from_unixtime(round(MAX(pv.pv_ts/1000))) last_activity
                             FROM $tbl_sessions s,
                                 $tbl_pagevisits pv
                             WHERE 1=1 
@@ -584,8 +583,6 @@ class YASBIL_WP_Admin {
                                     $wpdb->prepare($sql_select_summary_stats, $user_id),
                                     ARRAY_A
                                 );
-
-                                $tz_off = $row_stats['session_tz_offset'];
 
                                 ?>
                                 <tr>
@@ -607,7 +604,7 @@ class YASBIL_WP_Admin {
                                     <td><?=$row_stats['pv_ct']?></td>
                                     <td><?=$this->yasbil_display_dur($row_stats['avg_session_dur_ms'])?></td>
                                     <td><?=$row_stats['pv_per_session']?></td>
-                                    <td><?=$this->yasbil_milli_to_str($row_stats['last_activity'], $tz_off)?></td>
+                                    <td><?=$row_stats['last_activity']?></td>
                                 </tr>
 
                                 <?php
@@ -901,6 +898,10 @@ class YASBIL_WP_Admin {
     $tbl_sessions = $wpdb->prefix . "yasbil_sessions";
     $tbl_pagevisits = $wpdb->prefix . "yasbil_session_pagevisits";
 
+    // calendar heatmap alwways displays in browser's timezone
+    // https://github.com/wa0x6e/cal-heatmap/issues/126
+    // https://github.com/wa0x6e/cal-heatmap/issues/122
+
     $sql_browse_heatmap_data = "
         SELECT a.session_guid,
             round(a.session_start_ts/1000) ts_sec,
@@ -955,9 +956,10 @@ class YASBIL_WP_Admin {
                 <button type="button" id="browse_heatmap_prev" class="btn btn-outline-secondary">Previous</button>
                 <button type="button" id="browse_heatmap_next" class="btn btn-outline-secondary">Next</button>
             </div>
-            <br/>
-            <br/>
+            <p class="my-2 small">Timestamps in the calendar heatmap are in this browser's timezone.</p>
             <div id="browse_heatmap_<?=$user_id?>" class="browse-heatmap"></div>
+
+
 
             <script>
                 const heatmap_data_<?=$user_id?> = <?=$js_data_heatmap?>
@@ -989,7 +991,7 @@ class YASBIL_WP_Admin {
                 });
             </script>
 
-            <p class="mt-4">All timestamps are in participant's local time.</p>
+            <p class="mt-4">All timestamps below are in participant's local time.</p>
 
 
 <?php
@@ -1033,6 +1035,9 @@ class YASBIL_WP_Admin {
                 &nbsp; &bull; &nbsp;
                 <b>Duration:</b>
                 <?=$this->yasbil_display_dur_diff($row_s['session_start_ts'], $row_s['session_end_ts'])?>
+                &nbsp; &bull; &nbsp;
+                <b>Timezone:</b>
+                <?=$row_s['session_tz_str']?>
 
                 <br/>
 
@@ -2122,6 +2127,10 @@ class YASBIL_WP_Admin {
                 AND a.user_id = %s
                 group by 1
             ";*/
+
+            // calendar heatmap alwways displays in browser's timezone
+            // https://github.com/wa0x6e/cal-heatmap/issues/126
+            // https://github.com/wa0x6e/cal-heatmap/issues/122
 
             $sql_browse_heatmap_data = "
                 SELECT a.session_guid,
