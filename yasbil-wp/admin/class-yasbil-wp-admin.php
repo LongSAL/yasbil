@@ -832,7 +832,7 @@ class YASBIL_WP_Admin {
                 fill: #999;
             }
 
-            .browse-heatmap {
+            .heatmap-wrapper {
                 background: white;
                 padding: 10px;
             }
@@ -952,12 +952,20 @@ class YASBIL_WP_Admin {
                 <samp><?=$user_name?></samp>
             </p>
 
-            <div class="btn-group btn-group-sm" role="group" aria-label="Basic example">
-                <button type="button" id="browse_heatmap_prev" class="btn btn-outline-secondary">Previous</button>
-                <button type="button" id="browse_heatmap_next" class="btn btn-outline-secondary">Next</button>
+
+            <p class="small">Timestamps in the calendar heatmap are in this browser's timezone.</p>
+
+            <div class="heatmap-wrapper">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Basic example">
+                    <button type="button" id="browse_heatmap_prev" class="btn btn-outline-secondary">Previous</button>
+                    <button type="button" id="browse_heatmap_next" class="btn btn-outline-secondary">Next</button>
+                </div>
+
+                <div id="browse_heatmap_<?=$user_id?>" class="mt-3"></div>
             </div>
-            <p class="my-2 small">Timestamps in the calendar heatmap are in this browser's timezone.</p>
-            <div id="browse_heatmap_<?=$user_id?>" class="browse-heatmap"></div>
+
+
+
 
 
 
@@ -970,7 +978,7 @@ class YASBIL_WP_Admin {
                     itemSelector: document.querySelector('#browse_heatmap_<?=$user_id?>'),
                     domain: "month",
                     subDomain: "x_day",
-                    range: 3,
+                    range: 6,
                     domainGutter: 20,
                     data: heatmap_data_<?=$user_id?>['browse_heatmap_data'],
                     previousSelector: "#browse_heatmap_prev",
