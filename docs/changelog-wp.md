@@ -1,8 +1,12 @@
 
 # Changelog: YASBIL WP Plugin
 
+### 2.1.2
+- extension fixes to allow downloading of files of any size
+
 ### 2.1.1
 - fixed SQL query for API endpoint of browsing heatmap data, when `session_end_ts` is not captured
+- added calendar heatmap to individual user pages
 
 ### 2.1.0
 Changes before starting LongSAL study
