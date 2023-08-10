@@ -14,8 +14,15 @@ $(document).ready(function()
     $('input[name=wp_app_pass]').val(settings.PASS);
 
     // remove trailing spaces and slashes from WP-url
-    $('input[name=wp_url]').on('change paste keyup', function() {
-        $(this).val($(this).val().trim().replace(/\/+$/g, ''));
+    $('input[name=wp_url]').on('paste change', function(event) {
+        if(event.type === 'paste') {
+            event.preventDefault();
+            var text = (event.originalEvent.clipboardData || window.clipboardData).getData('text');
+        } else {
+            var text = $(this).val();
+        }
+        const modifiedText = text.trim().replace(/\/+$/g, '');
+        $(this).val(modifiedText);
     });
 
     // remove trailing spaces from WP-user
