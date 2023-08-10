@@ -32,34 +32,32 @@ $(document).ready(async function()
             const ts = get_timestamp_for_filename();
             const filename_prefix = `yasbil_data_${ts}`;
             const json_filename = filename_prefix + '.json';
-            const json_string = JSON.stringify(json_export);
+            const save = function(data, filename){
 
-            /*const zip_filename = filename_prefix + '.zip';
-            console.log('zip start');
-            //------ zipping ----------
-            //https://github.com/photopea/UZIP.js
-            //https://github.com/101arrowz/fflate
-            const buf = fflate.strToU8(json_string);
-            const zip_Uint8Array = fflate.zipSync(buf, { level: 9 }); //returns Uint8Array
-            const zip_base64 = btoa(new TextDecoder().decode(zip_Uint8Array));
-            console.log('zip end');*/
+                if(!data) {
+                    console.error('Console.save: No data')
+                    return;
+                }
+            
+                if(!filename) filename = 'console.json'
+            
+                if(typeof data === "object"){
+                    data = JSON.stringify(data, undefined, 4)
+                }
+            
+                var blob = new Blob([data], {type: 'text/json'}),
+                    e    = document.createEvent('MouseEvents'),
+                    a    = document.createElement('a')
+            
+                a.download = filename
+                a.href = window.URL.createObjectURL(blob)
+                a.dataset.downloadurl =  ['text/json', a.download, a.href].join(':')
+                e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+                a.dispatchEvent(e)
+            }
 
 
-
-            let element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(json_string));
-            element.setAttribute('download', json_filename);
-
-            // element.setAttribute('href', 'data:text/plain;base64,' + encodeURIComponent(zip_base64));
-            // element.setAttribute('download', zip_filename);
-
-            element.style.display = 'none';
-            document.body.appendChild(element);
-
-            element.click();
-
-            document.body.removeChild(element);
-
+            save(json_export, json_filename);
             // after exporting done, show the button again
             $(this).show();
         }
