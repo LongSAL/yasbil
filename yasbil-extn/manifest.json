@@ -3,7 +3,7 @@
   "name": "YASBIL",
   "description": "YASBIL: Yet Another Search Behaviour (and) Interaction Logger",
   "homepage_url": "https://github.com/yasbil/yasbil",
-  "version": "2.1.0",
+  "version": "2.1.2",
 
   "background": {
     "page": "yasbil_background_page.html"
@@ -33,7 +33,7 @@
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "yasbil_fixed@nilavra.in"
+      "id": "rxvl-d/yasbil"
     }
   },
 
