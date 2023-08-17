@@ -1,6 +1,10 @@
 
 # Changelog: YASBIL Extension
 
+### 2.1.2
+- Fixed issue with entering a remote address in the settings
+- Fixed issue wiht locally exporting large JSON files
+
 ### 2.1.0
 Changes before starting LongSAL study
 - added remote data visualization
